@@ -162,7 +162,8 @@
     </div>
     <div class="sb-nav">
       <div class="sb-sec">ראשי</div>
-      <div class="sb-item on"  id="nav-dashboard" onclick="goPage('dashboard',this)"><svg width="15" height="15"><use href="#ic-dash"/></svg> לוח מחוונים</div>
+      <div class="sb-item on"  id="nav-home"      onclick="goPage('home',this)"><svg width="15" height="15"><use href="#ic-logo"/></svg> עמוד הבית</div>
+      <div class="sb-item"     id="nav-dashboard" onclick="goPage('dashboard',this)"><svg width="15" height="15"><use href="#ic-dash"/></svg> לוח מחוונים</div>
       <div class="sb-item"    id="nav-tenders"   onclick="goPage('tenders',this)"><svg width="15" height="15"><use href="#ic-tender"/></svg> מכרזים פעילים <span class="sb-badge">1</span></div>
       <div class="sb-item"    id="nav-analysis"  onclick="goPage('analysis',this)"><svg width="15" height="15"><use href="#ic-ai"/></svg> העלאת מכרז</div>
       <div class="sb-item"    id="nav-team"      onclick="goPage('team',this)"><svg width="15" height="15"><use href="#ic-team"/></svg> מאגר צוות</div>
@@ -174,8 +175,8 @@
     </div>
     <div class="sb-bot">
       <div class="sb-user">
-        <div class="sb-av" id="sbAv">יכ</div>
-        <div style="flex:1"><div class="sb-un" id="sbName">יוסי כהן</div><div class="sb-ur">מנהל מערכת</div></div>
+        <div class="sb-av" id="sbAv">רפ</div>
+        <div style="flex:1"><div class="sb-un" id="sbName">רון פישמן</div><div class="sb-ur">מנהל מערכת</div></div>
         <svg width="12" height="12" style="color:rgba(255,255,255,.4)"><use href="#ic-arr"/></svg>
       </div>
     </div>
@@ -190,8 +191,8 @@
         <div style="font-weight:900;font-size:15px;color:var(--navy)">מזכיר</div>
       </div>
       <div style="flex:1">
-        <div class="tb-title desk-only" id="pgTitle">לוח מחוונים</div>
-        <div style="font-size:10px;color:var(--s3)" class="desk-only" id="pgSub">סקירה כללית ועדכונים שוטפים</div>
+        <div class="tb-title desk-only" id="pgTitle">עמוד הבית</div>
+        <div style="font-size:10px;color:var(--s3)" class="desk-only" id="pgSub">סקירה כללית</div>
       </div>
       <div id="topbarAlert" style="display:none" class="alert aa desk-only" onclick="goPage('vault',document.getElementById('nav-vault'))" style="margin:0;padding:5px 9px;font-size:11px;cursor:pointer"></div>
       <div class="ib desk-only"><svg width="15" height="15"><use href="#ic-bell"/></svg></div>
@@ -205,8 +206,18 @@
     <div class="content">
       <div class="grule"></div>
 
+      <!-- ═══ HOME ═══ -->
+      <div id="page-home" class="page on">
+        <div class="home-greeting" id="homeGreeting"></div>
+        <div class="home-stats" id="homeStats"></div>
+        <div class="home-activity card cp">
+          <div class="ct">פעילות אחרונה</div>
+          <div id="homeActivity"></div>
+        </div>
+      </div>
+
       <!-- ═══ DASHBOARD ═══ -->
-      <div id="page-dashboard" class="page on">
+      <div id="page-dashboard" class="page">
         <div id="dashAlerts"></div>
         <div class="g4" id="dashStats"></div>
         <div class="g2">
@@ -490,7 +501,7 @@
             </div>
             <div class="fr">
               <div class="fg"><label class="fl">ח.פ</label><input class="fi" id="setVat" value="123456789"></div>
-              <div class="fg"><label class="fl">מורשה חתימה</label><input class="fi" id="setSign" value='יוסי כהן רו"ח'></div>
+              <div class="fg"><label class="fl">מורשה חתימה</label><input class="fi" id="setSign" value='רון פישמן רו"ח'></div>
             </div>
             <div style="display:flex;gap:7px;margin-top:9px">
               <button class="btn bp" onclick="saveSettings()"><svg width="13" height="13"><use href="#ic-check"/></svg> שמור</button>
@@ -505,7 +516,10 @@
   <!-- MOBILE BOTTOM NAV -->
   <div class="mob-bar">
     <div class="mob-bar-inner">
-      <div class="mob-nav on" id="mnav-dashboard" onclick="goPage('dashboard',this);setMobNav('dashboard')">
+      <div class="mob-nav on" id="mnav-home" onclick="goPage('home',this);setMobNav('home')">
+        <svg><use href="#ic-logo"/></svg><span>בית</span>
+      </div>
+      <div class="mob-nav" id="mnav-dashboard" onclick="goPage('dashboard',this);setMobNav('dashboard')">
         <svg><use href="#ic-dash"/></svg><span>ראשי</span>
       </div>
       <div class="mob-nav" id="mnav-tenders" onclick="goPage('tenders',this);setMobNav('tenders')">
@@ -513,9 +527,6 @@
       </div>
       <div class="mob-nav" id="mnav-analysis" onclick="goPage('analysis',this);setMobNav('analysis')">
         <svg><use href="#ic-ai"/></svg><span>ניתוח AI</span>
-      </div>
-      <div class="mob-nav" id="mnav-simulator" onclick="goPage('simulator',this);setMobNav('simulator')">
-        <svg><use href="#ic-sim"/></svg><span>סימולטור</span>
       </div>
       <div class="mob-nav" id="mnav-more" onclick="openMoreMenu()">
         <svg><use href="#ic-more"/></svg><span>עוד</span>
@@ -528,6 +539,7 @@
 <div class="more-overlay" id="moreOverlay" onclick="closeMoreMenu()">
   <div class="more-sheet" id="moreSheet" onclick="event.stopPropagation()">
     <div class="more-handle"></div>
+    <div class="more-item" onclick="goPageMob('simulator')"><svg><use href="#ic-sim"/></svg> סימולטור זכייה</div>
     <div class="more-item" onclick="goPageMob('team')"><svg><use href="#ic-team"/></svg> מאגר צוות</div>
     <div class="more-item" onclick="goPageMob('vault')"><svg><use href="#ic-folder"/></svg> תיקיית המציע</div>
     <div class="more-item" onclick="goPageMob('import')"><svg><use href="#ic-import"/></svg> ייבוא עובדים</div>
@@ -658,6 +670,7 @@
 <script src="js/data.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/nav.js"></script>
+<script src="js/home.js"></script>
 <script src="js/dashboard.js"></script>
 <script src="js/tenders.js"></script>
 <script src="js/analysis.js"></script>

@@ -17,6 +17,10 @@
   .atable{font-size:10.5px}
   .atable th,.atable td{padding:5px 6px}
   .zip-fn{font-size:9.5px}
+  .home-stats{grid-template-columns:1fr 1fr;gap:9px}
+  .home-stat{aspect-ratio:3/2;padding:12px 14px}
+  .home-stat-value{font-size:22px}
+  .home-greeting h1{font-size:22px}
 }
 
 /* ══ MOBILE BOTTOM NAV ══ */

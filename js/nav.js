@@ -28,7 +28,7 @@ function goPageMob(id){
   closeMoreMenu();
   goPage(id, null);
   // Update bottom nav if applicable
-  const navMap = {dashboard:'dashboard',tenders:'tenders',analysis:'analysis',simulator:'simulator'};
+  const navMap = {home:'home',dashboard:'dashboard',tenders:'tenders',analysis:'analysis',simulator:'simulator'};
   setMobNav(navMap[id]||'');
   setTimeout(()=>document.querySelectorAll('.mob-nav.on')[0],100);
 }

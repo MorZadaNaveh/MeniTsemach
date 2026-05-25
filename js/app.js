@@ -2,6 +2,7 @@
 
 /* ═════ INIT ═════ */
 function initApp(){
+  renderHome();
   renderDashboard();
   renderTenderTable();
   renderTenderCards();
