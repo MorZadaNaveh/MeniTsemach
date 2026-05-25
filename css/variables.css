@@ -1,0 +1,16 @@
+/* ══ CSS VARIABLES ══ */
+:root{
+  --bg:#f0f4f2;--bg2:#e4ede8;--w:#ffffff;
+  --grn:#1a5c4a;--grn2:#2d9b6f;--grn3:#3dbf8a;
+  --grn-light:#e8f5f0;--grn-border:#a8d8c8;
+  --navy:#12302a;--navy2:#1a3d33;
+  --gold:#c8a040;--gold2:#e0b850;--gl:#fdf8ec;--gb:#e8d090;
+  --s1:#3a4a44;--s2:#607870;--s3:#90a8a0;--s4:#b8ccc8;--s5:#dce8e4;
+  --red:#c0392b;--rbg:#fdf2f2;--rb:#fca5a5;
+  --amb:#b45309;--abg:#fffbeb;--arb:#fcd34d;
+  --blu:#1e5c9a;--bbg:#eff6ff;--blb:#93c5fd;
+  --sh1:0 1px 4px rgba(18,48,42,.08);
+  --sh2:0 4px 14px rgba(18,48,42,.12);
+  --sh3:0 12px 36px rgba(18,48,42,.18);
+  --shg:0 4px 20px rgba(45,155,111,.3);
+}

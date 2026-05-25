@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>מזכיר — Tender Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/variables.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/pages.css">
+<link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+<!-- ══════ ICON SVG DEFS ══════ -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <defs>
+    <symbol id="ic-logo" viewBox="0 0 24 24" fill="none" stroke="#1a5c4a" stroke-width="2.2">
+      <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+      <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+      <path d="M14 17.5h7M17.5 14v7"/>
+    </symbol>
+    <symbol id="ic-dash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+    </symbol>
+    <symbol id="ic-tender" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+    </symbol>
+    <symbol id="ic-ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+    </symbol>
+    <symbol id="ic-team" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </symbol>
+    <symbol id="ic-sim" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </symbol>
+    <symbol id="ic-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </symbol>
+    <symbol id="ic-import" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </symbol>
+    <symbol id="ic-set" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </symbol>
+    <symbol id="ic-dl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </symbol>
+    <symbol id="ic-print" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <polyline points="6 9 6 2 18 2 18 9"/>
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+      <rect x="6" y="14" width="12" height="8"/>
+    </symbol>
+    <symbol id="ic-zip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+    </symbol>
+    <symbol id="ic-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </symbol>
+    <symbol id="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12"/>
+    </symbol>
+    <symbol id="ic-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+    </symbol>
+    <symbol id="ic-eye2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </symbol>
+    <symbol id="ic-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+    </symbol>
+    <symbol id="ic-shld" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </symbol>
+    <symbol id="ic-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/>
+      <circle cx="12" cy="19" r="1" fill="currentColor"/>
+    </symbol>
+    <symbol id="ic-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </symbol>
+    <symbol id="ic-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+      <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+    </symbol>
+    <symbol id="ic-arr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+    </symbol>
+    <symbol id="ic-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </symbol>
+    <symbol id="ic-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- ══════ LOGIN ══════ -->
+<div id="loginScreen" class="lwrap">
+  <div class="lpat"></div><div class="lglow"></div>
+  <div class="lcard">
+    <div class="lli"><svg><use href="#ic-logo"/></svg></div>
+    <div class="llt">מזכיר</div>
+    <div class="lls">Tender Intelligence</div>
+    <div class="sbadge2"><svg width="13" height="13"><use href="#ic-shld"/></svg> מוגן AES-256 + אימות דו-שלבי</div>
+    <div id="ls1">
+      <div class="fg"><label class="fl">כתובת מייל</label><input class="fi" id="loginEmail" type="email" placeholder="name@office.co.il" value="demo@mazkir.co.il"></div>
+      <div class="fg">
+        <label class="fl">סיסמה</label>
+        <div style="position:relative">
+          <input class="fi" id="pwInp" type="password" value="Demo1234" style="padding-left:36px">
+          <span onclick="togglePw()" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--s3)"><svg width="16" height="16" id="eyeIcon"><use href="#ic-eye"/></svg></span>
+        </div>
+      </div>
+      <button class="btn bp" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="doLogin()">
+        <svg width="15" height="15"><use href="#ic-lock"/></svg> כניסה למערכת
+      </button>
+    </div>
+    <div id="ls2" style="display:none">
+      <div style="text-align:center;margin-bottom:11px">
+        <div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:3px">אימות דו-שלבי</div>
+        <div style="font-size:11.5px;color:var(--s2)">קוד OTP נשלח לנייד הרשום</div>
+      </div>
+      <div class="otprow" id="otpRow"></div>
+      <div id="otpMsg" style="font-size:11px;color:var(--s3);text-align:center;margin-top:8px">
+        לא קיבלת? <span style="color:var(--grn);cursor:pointer;font-weight:700" onclick="showOtpHint()">שלח שוב</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ APP ══════ -->
+<div id="appShell" class="shell" style="display:none">
+
+  <!-- SIDEBAR (desktop) -->
+  <div class="sb desk-only">
+    <div class="sb-logo">
+      <div class="sb-ico"><svg><use href="#ic-logo"/></svg></div>
+      <div>
+        <div class="sb-name">מזכיר</div>
+        <div class="sb-tag">Tender Intelligence</div>
+      </div>
+    </div>
+    <div class="sb-nav">
+      <div class="sb-sec">ראשי</div>
+      <div class="sb-item on"  id="nav-dashboard" onclick="goPage('dashboard',this)"><svg width="15" height="15"><use href="#ic-dash"/></svg> לוח מחוונים</div>
+      <div class="sb-item"    id="nav-tenders"   onclick="goPage('tenders',this)"><svg width="15" height="15"><use href="#ic-tender"/></svg> מכרזים פעילים <span class="sb-badge">1</span></div>
+      <div class="sb-item"    id="nav-analysis"  onclick="goPage('analysis',this)"><svg width="15" height="15"><use href="#ic-ai"/></svg> העלאת מכרז</div>
+      <div class="sb-item"    id="nav-team"      onclick="goPage('team',this)"><svg width="15" height="15"><use href="#ic-team"/></svg> מאגר צוות</div>
+      <div class="sb-item"    id="nav-simulator" onclick="goPage('simulator',this)"><svg width="15" height="15"><use href="#ic-sim"/></svg> סימולטור זכייה</div>
+      <div class="sb-sec">מערכת</div>
+      <div class="sb-item"    id="nav-vault"     onclick="goPage('vault',this)"><svg width="15" height="15"><use href="#ic-folder"/></svg> תיקיית מציע <span class="sb-badge warn" id="vaultBadge" style="display:none">!</span></div>
+      <div class="sb-item"    id="nav-import"    onclick="goPage('import',this)"><svg width="15" height="15"><use href="#ic-import"/></svg> ייבוא עובדים</div>
+      <div class="sb-item"    id="nav-settings"  onclick="goPage('settings',this)"><svg width="15" height="15"><use href="#ic-set"/></svg> הגדרות</div>
+    </div>
+    <div class="sb-bot">
+      <div class="sb-user">
+        <div class="sb-av" id="sbAv">יכ</div>
+        <div style="flex:1"><div class="sb-un" id="sbName">יוסי כהן</div><div class="sb-ur">מנהל מערכת</div></div>
+        <svg width="12" height="12" style="color:rgba(255,255,255,.4)"><use href="#ic-arr"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <!-- Mobile logo -->
+      <div class="mob-top-logo">
+        <div class="sb-ico" style="width:30px;height:30px"><svg style="width:18px;height:18px"><use href="#ic-logo"/></svg></div>
+        <div style="font-weight:900;font-size:15px;color:var(--navy)">מזכיר</div>
+      </div>
+      <div style="flex:1">
+        <div class="tb-title desk-only" id="pgTitle">לוח מחוונים</div>
+        <div style="font-size:10px;color:var(--s3)" class="desk-only" id="pgSub">סקירה כללית ועדכונים שוטפים</div>
+      </div>
+      <div id="topbarAlert" style="display:none" class="alert aa desk-only" onclick="goPage('vault',document.getElementById('nav-vault'))" style="margin:0;padding:5px 9px;font-size:11px;cursor:pointer"></div>
+      <div class="ib desk-only"><svg width="15" height="15"><use href="#ic-bell"/></svg></div>
+      <button class="btn bp sm desk-only" onclick="exportAllZip()"><svg width="13" height="13"><use href="#ic-zip"/></svg> ייצא ZIP</button>
+      <!-- Mobile menu -->
+      <button class="btn bo sm" style="display:none" id="mobMenuBtn" onclick="openMoreMenu()">
+        <svg width="16" height="16"><use href="#ic-more"/></svg>
+      </button>
+    </div>
+
+    <div class="content">
+      <div class="grule"></div>
+
+      <!-- ═══ DASHBOARD ═══ -->
+      <div id="page-dashboard" class="page on">
+        <div id="dashAlerts"></div>
+        <div class="g4" id="dashStats"></div>
+        <div class="g2">
+          <div class="card cp">
+            <div class="gacc"></div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px">
+              <div><div class="ct">מכרזים פעילים</div><div class="cs">לחץ לפרטים מלאים ונספחים</div></div>
+              <button class="btn bo sm" onclick="goPage('tenders',document.getElementById('nav-tenders'))">כולם <svg width="12" height="12"><use href="#ic-arr"/></svg></button>
+            </div>
+            <div id="dashTenderList"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="card cp">
+              <div class="gacc"></div>
+              <div class="ct" style="margin-bottom:10px">מסמכי יסוד</div>
+              <div id="dashDocList"></div>
+              <button class="btn bgh sm" style="width:100%;justify-content:center;margin-top:3px" onclick="goPage('vault',document.getElementById('nav-vault'))">
+                <svg width="12" height="12"><use href="#ic-folder"/></svg> תיקיית המציע המלאה
+              </button>
+            </div>
+            <div class="card cp">
+              <div class="gacc"></div>
+              <div class="ct" style="margin-bottom:9px">תזכורות</div>
+              <div id="dashReminders"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TENDERS ═══ -->
+      <div id="page-tenders" class="page">
+        <div style="display:flex;gap:8px;margin-bottom:13px;align-items:center">
+          <div class="tabs" style="flex:1;margin-bottom:0" id="tenderFilterTabs">
+            <div class="tab on" onclick="filterTenders('all',this)">הכל</div>
+            <div class="tab" onclick="filterTenders('urgent',this)">⚡ דחוף</div>
+            <div class="tab" onclick="filterTenders('soon',this)">⏰ בקרוב</div>
+            <div class="tab" onclick="filterTenders('ok',this)">✅ רגוע</div>
+          </div>
+          <button class="btn bp" onclick="openModal('newTenderModal')">
+            <svg width="14" height="14"><use href="#ic-plus"/></svg> מכרז חדש
+          </button>
+        </div>
+        <!-- Desktop table -->
+        <div class="card desk-only">
+          <div style="padding:10px 18px 8px;border-bottom:1px solid var(--s5)">
+            <div style="display:grid;grid-template-columns:auto 1fr 100px 110px 80px 70px;gap:0 11px;font-size:9px;font-weight:700;color:var(--s3);letter-spacing:.8px;text-transform:uppercase;align-items:center">
+              <div></div><div>שם המכרז</div><div style="text-align:center">ערך</div><div style="text-align:center">סיכוי זכייה</div><div style="text-align:center">הגשה</div><div></div>
+            </div>
+          </div>
+          <div id="tenderTableBody"></div>
+        </div>
+        <!-- Mobile cards -->
+        <div id="tenderCardList" style="display:none"></div>
+      </div>
+
+      <!-- ═══ ANALYSIS (AI) ═══ -->
+      <div id="page-analysis" class="page">
+        <!-- Upload -->
+        <div class="card cp" id="uploadCard" style="margin-bottom:13px">
+          <div class="gacc"></div>
+          <div class="ct" style="margin-bottom:3px">העלאת קובץ מכרז לניתוח AI</div>
+          <div class="cs" style="margin-bottom:12px">Claude AI יחלץ את כל המידע: תנאי סף, ניקוד, דרישות צוות, תאריכים, ערבויות ועוד</div>
+          <div class="uzone" id="uploadZone" onclick="document.getElementById('tenderFileInp').click()"
+            ondragover="event.preventDefault();this.classList.add('drag')"
+            ondragleave="this.classList.remove('drag')"
+            ondrop="handleFileDrop(event)">
+            <input type="file" id="tenderFileInp" style="display:none" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.zip,.txt" onchange="handleFileSelect(this.files)">
+            <div style="font-size:32px;margin-bottom:8px">📂</div>
+            <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:4px">גרור קובץ מכרז לכאן</div>
+            <div style="font-size:12px;color:var(--s2)">PDF · DOCX · XLSX · ZIP · TXT</div>
+            <div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:10px" id="uploadedFileList"></div>
+          </div>
+          <div id="uploadActions" style="margin-top:10px;display:none">
+            <button class="btn bai" onclick="runAIAnalysis()">
+              🤖 נתח עם Claude AI
+            </button>
+            <button class="btn bo sm" style="margin-right:8px" onclick="resetUpload()">ביטול</button>
+          </div>
+        </div>
+
+        <!-- AI Progress -->
+        <div id="aiProgress" style="display:none" class="card cp">
+          <div class="ai-thinking">
+            <div class="ai-spinner"></div>
+            <div style="font-weight:700;font-size:15px;color:var(--navy);margin-bottom:5px">Claude AI מנתח את המכרז...</div>
+            <div id="aiProgressText" style="font-size:12.5px;color:var(--s2)">קורא את הקובץ...</div>
+            <div style="margin-top:12px;background:var(--s5);border-radius:5px;height:6px;overflow:hidden">
+              <div id="aiProgressBar" style="height:100%;background:linear-gradient(90deg,var(--grn),var(--grn3));border-radius:5px;width:0%;transition:width .5s"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AI Result -->
+        <div id="aiResultSection" style="display:none">
+          <div class="card cp" style="margin-bottom:13px">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+              <div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                  <span style="background:var(--grn-light);color:var(--grn);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid var(--grn-border)">✨ Claude AI</span>
+                  <span id="aiAnalysisDate" style="font-size:10.5px;color:var(--s3)"></span>
+                </div>
+                <div class="ct" id="aiTenderName">שם המכרז</div>
+                <div class="cs" id="aiTenderOrg">גוף מזמין</div>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="btn bo sm" onclick="printDocument('analysis')"><svg width="12" height="12"><use href="#ic-print"/></svg> הדפס</button>
+                <button class="btn bp sm" onclick="openTenderModal(currentAnalysisIdx)"><svg width="12" height="12"><use href="#ic-tender"/></svg> פתח מכרז</button>
+              </div>
+            </div>
+            <!-- Tabs -->
+            <div class="tabs" id="aiResultTabs">
+              <div class="tab on" onclick="switchAITab('overview',this)">סקירה</div>
+              <div class="tab" onclick="switchAITab('scoring',this)">ניקוד</div>
+              <div class="tab" onclick="switchAITab('team',this)">צוות</div>
+              <div class="tab" onclick="switchAITab('docs',this)">נספחים</div>
+            </div>
+            <div id="aiResultBody"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ TEAM ═══ -->
+      <div id="page-team" class="page">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px">
+          <div><div class="ct">מאגר הצוות</div><div class="cs" id="teamCountLbl">ניהול עובדים — ניקוד מחושב בזמן אמת</div></div>
+          <div style="display:flex;gap:7px">
+            <button class="btn bo sm" onclick="goPage('import',document.getElementById('nav-import'))"><svg width="13" height="13"><use href="#ic-import"/></svg> ייבוא Excel</button>
+            <button class="btn bp" onclick="openModal('addTeamModal')"><svg width="14" height="14"><use href="#ic-plus"/></svg> הוסף עובד</button>
+          </div>
+        </div>
+        <div class="g4" id="teamStats" style="margin-bottom:14px"></div>
+        <div class="g3" id="teamGrid"></div>
+      </div>
+
+      <!-- ═══ SIMULATOR ═══ -->
+      <div id="page-simulator" class="page">
+        <div class="card cp" style="margin-bottom:12px">
+          <div class="gacc"></div>
+          <div class="ct" style="margin-bottom:3px">סימולטור זכייה</div>
+          <div class="cs" style="margin-bottom:12px">Claude AI ממפה את הצוות האופטימלי ומחשב סיכוי זכייה</div>
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div class="fg" style="flex:1;margin-bottom:0">
+              <label class="fl">בחר מכרז לסימולציה</label>
+              <select class="fs" id="simSelect"></select>
+            </div>
+            <button class="btn bai" style="height:38px" onclick="runSimulator()">
+              <svg width="14" height="14"><use href="#ic-sim"/></svg> הרץ
+            </button>
+          </div>
+        </div>
+        <div id="simEmpty" class="card cp">
+          <div style="text-align:center;padding:36px 20px">
+            <div style="font-size:36px;opacity:.25;margin-bottom:10px">⚡</div>
+            <div style="font-weight:800;font-size:14px;color:var(--s2);margin-bottom:5px">הסימולטור מוכן</div>
+            <div style="font-size:12px;color:var(--s3);line-height:1.5">בחר מכרז מהרשימה למעלה</div>
+          </div>
+        </div>
+        <div id="simResults" style="display:none">
+          <div class="g2">
+            <div class="card cp" style="text-align:center">
+              <div class="gacc" style="margin:0 auto 10px"></div>
+              <div class="ct" style="margin-bottom:13px">סיכוי זכייה</div>
+              <div class="simring">
+                <svg width="120" height="120" style="transform:rotate(-90deg);position:absolute">
+                  <circle cx="60" cy="60" r="50" fill="none" stroke="var(--s5)" stroke-width="9"/>
+                  <circle id="simCircle" cx="60" cy="60" r="50" fill="none" stroke="var(--grn2)" stroke-width="9" stroke-linecap="round" style="filter:drop-shadow(0 0 5px rgba(45,155,111,.4));transition:stroke-dasharray 1.2s ease"/>
+                </svg>
+                <div class="simin">
+                  <div class="simpct" id="simPct">—</div>
+                  <div class="simlbl">סיכוי</div>
+                </div>
+              </div>
+              <div id="simBadges" style="display:flex;justify-content:center;gap:5px;flex-wrap:wrap"></div>
+            </div>
+            <div class="card cp">
+              <div class="gacc"></div>
+              <div class="ct" style="margin-bottom:10px">פירוט ניקוד</div>
+              <div id="simScoring"></div>
+            </div>
+            <div class="card cp">
+              <div class="gacc"></div>
+              <div class="ct" style="margin-bottom:10px">🏅 צוות מומלץ</div>
+              <div id="simTeam"></div>
+            </div>
+            <div class="card cp">
+              <div class="gacc"></div>
+              <div class="ct" style="margin-bottom:10px">ניתוח וסיכונים</div>
+              <div id="simRisks"></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:7px;margin-top:10px">
+            <button class="btn bo sm" onclick="printDocument('simulator')"><svg width="12" height="12"><use href="#ic-print"/></svg> הדפס דוח</button>
+            <button class="btn bp sm" id="simOpenTenderBtn"><svg width="12" height="12"><use href="#ic-tender"/></svg> פתח מכרז</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ VAULT ═══ -->
+      <div id="page-vault" class="page">
+        <div id="vaultAlerts"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:0 0 12px">
+          <div><div class="ct">תיקיית המציע — מסמכי יסוד</div><div class="cs">מצורפים אוטומטית לכל חבילת הגשה</div></div>
+          <button class="btn bp" onclick="openModal('addDocModal')"><svg width="14" height="14"><use href="#ic-plus"/></svg> הוסף</button>
+        </div>
+        <div class="g2" id="vaultGrid"></div>
+      </div>
+
+      <!-- ═══ IMPORT ═══ -->
+      <div id="page-import" class="page">
+        <div class="card cp">
+          <div class="gacc"></div>
+          <div class="ct" style="margin-bottom:3px">ייבוא עובדים מ-Excel / CSV</div>
+          <div class="cs" style="margin-bottom:12px">העלה קובץ ומפה כל עמודה לשדה המתאים</div>
+          <div class="tabs" id="importTabs">
+            <div class="tab on" onclick="switchImportTab(1,this)">1. קובץ</div>
+            <div class="tab" onclick="switchImportTab(2,this)">2. מיפוי</div>
+            <div class="tab" onclick="switchImportTab(3,this)">3. אישור</div>
+          </div>
+          <div id="importTab1">
+            <div class="uzone" onclick="document.getElementById('excelFileInp').click()">
+              <input type="file" id="excelFileInp" style="display:none" accept=".xlsx,.xls,.csv" onchange="handleExcelFile()">
+              <div style="font-size:26px;margin-bottom:7px">📊</div>
+              <div style="font-weight:700;font-size:14px;color:var(--navy);margin-bottom:3px">גרור קובץ Excel / CSV</div>
+              <div style="font-size:12px;color:var(--s2)">XLSX · XLS · CSV</div>
+            </div>
+            <div class="stl" style="margin-top:12px">מבנה קובץ מומלץ</div>
+            <div style="overflow-x:auto"><table class="atable">
+              <thead><tr><th>שם</th><th>ת.ז</th><th>תפקיד</th><th>שנות ניסיון</th><th>טלפון</th><th>מייל</th><th>הסמכות</th><th>תחומי ניסיון</th></tr></thead>
+              <tbody><tr><td colspan="8" style="text-align:center;color:var(--s3);font-style:italic;font-size:10.5px;padding:9px">...</td></tr></tbody>
+            </table></div>
+            <button class="btn bgh sm" onclick="downloadTemplate()"><svg width="12" height="12"><use href="#ic-dl"/></svg> הורד תבנית</button>
+          </div>
+          <div id="importTab2" style="display:none">
+            <div class="alert ab2" style="margin-bottom:11px;font-size:11.5px">🗺️ מפה כל עמודה לשדה המתאים</div>
+            <div id="mappingGrid"></div>
+            <div style="display:flex;gap:7px;margin-top:10px">
+              <button class="btn bo" onclick="switchImportTab(1,null)">← חזרה</button>
+              <button class="btn bp" onclick="switchImportTab(3,null)">המשך →</button>
+            </div>
+          </div>
+          <div id="importTab3" style="display:none">
+            <div class="alert ag2" style="margin-bottom:10px">✅ 3 רשומות מוכנות לייבוא</div>
+            <div style="overflow-x:auto"><table class="atable">
+              <thead><tr><th>#</th><th>שם</th><th>תפקיד</th><th>ת.ז.</th><th>שנות ניסיון</th><th>טלפון</th><th>מייל</th></tr></thead>
+              <tbody>
+                <tr><td style="color:var(--grn);font-weight:700">1</td><td style="font-weight:600">ישראל ישראלי</td><td>מבקר</td><td style="font-family:'IBM Plex Mono',monospace">056789123</td><td style="font-family:'IBM Plex Mono',monospace">8</td><td style="direction:ltr;font-size:11px">052-1234567</td><td style="direction:ltr;font-size:10.5px">israel@firm.co.il</td></tr>
+                <tr><td style="color:var(--grn);font-weight:700">2</td><td style="font-weight:600">רות כהנא</td><td>מנהלת שכר</td><td style="font-family:'IBM Plex Mono',monospace">067891234</td><td style="font-family:'IBM Plex Mono',monospace">11</td><td style="direction:ltr;font-size:11px">054-2345678</td><td style="direction:ltr;font-size:10.5px">ruth@firm.co.il</td></tr>
+                <tr><td style="color:var(--grn);font-weight:700">3</td><td style="font-weight:600">בני ארוש</td><td>אנליסט</td><td style="font-family:'IBM Plex Mono',monospace">078912345</td><td style="font-family:'IBM Plex Mono',monospace">4</td><td style="direction:ltr;font-size:11px">050-3456789</td><td style="direction:ltr;font-size:10.5px">benny@firm.co.il</td></tr>
+              </tbody>
+            </table></div>
+            <div style="display:flex;gap:7px;margin-top:10px">
+              <button class="btn bo" onclick="switchImportTab(2,null)">← חזרה</button>
+              <button class="btn bp" id="importBtn" onclick="doImport()"><svg width="13" height="13"><use href="#ic-check"/></svg> ייבא 3 עובדים</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ SETTINGS ═══ -->
+      <div id="page-settings" class="page">
+        <div class="g2">
+          <div class="card cp">
+            <div class="gacc"></div>
+            <div class="ct" style="margin-bottom:11px">אבטחה ופרטיות</div>
+            <div class="togrow"><div><div class="tl2">אימות דו-שלבי (2FA)</div><div class="ts2">חובה בכל כניסה</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="togrow"><div><div class="tl2">התראות מייל</div><div class="ts2">מסמכים ותזכורות</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="togrow"><div><div class="tl2">התראות פקיעת מסמכים</div><div class="ts2">30 ו-60 יום מראש</div></div><div class="tog on" onclick="this.classList.toggle('on')"></div></div>
+            <div class="div"></div>
+            <div style="font-weight:700;font-size:12px;color:var(--navy);margin-bottom:8px">ניהול משתמשים</div>
+            <div id="usersGrid"></div>
+            <button class="btn bo sm" style="margin-top:5px" onclick="alert('פתיחת טופס הוספת משתמש')"><svg width="12" height="12"><use href="#ic-plus"/></svg> הוסף משתמש</button>
+          </div>
+          <div class="card cp">
+            <div class="gacc"></div>
+            <div class="ct" style="margin-bottom:11px">פרופיל המשרד</div>
+            <div class="fg"><label class="fl">שם המשרד</label><input class="fi" id="setFirm" value="משרד כהן ואסוציינטים — רואי חשבון"></div>
+            <div class="fg"><label class="fl">כתובת</label><input class="fi" id="setAddr" value="רח׳ אחוזה 15, רעננה 4309603"></div>
+            <div class="fr">
+              <div class="fg"><label class="fl">טלפון</label><input class="fi" id="setPhone" value="09-7403000"></div>
+              <div class="fg"><label class="fl">מייל</label><input class="fi" id="setEmail" value="info@cohen-audit.co.il"></div>
+            </div>
+            <div class="fr">
+              <div class="fg"><label class="fl">ח.פ</label><input class="fi" id="setVat" value="123456789"></div>
+              <div class="fg"><label class="fl">מורשה חתימה</label><input class="fi" id="setSign" value='יוסי כהן רו"ח'></div>
+            </div>
+            <div style="display:flex;gap:7px;margin-top:9px">
+              <button class="btn bp" onclick="saveSettings()"><svg width="13" height="13"><use href="#ic-check"/></svg> שמור</button>
+              <button class="btn bo sm" onclick="printDocument('bidder')"><svg width="12" height="12"><use href="#ic-print"/></svg> הדפס פרופיל</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /content -->
+  </div><!-- /main -->
+
+  <!-- MOBILE BOTTOM NAV -->
+  <div class="mob-bar">
+    <div class="mob-bar-inner">
+      <div class="mob-nav on" id="mnav-dashboard" onclick="goPage('dashboard',this);setMobNav('dashboard')">
+        <svg><use href="#ic-dash"/></svg><span>ראשי</span>
+      </div>
+      <div class="mob-nav" id="mnav-tenders" onclick="goPage('tenders',this);setMobNav('tenders')">
+        <svg><use href="#ic-tender"/></svg><span>מכרזים</span>
+      </div>
+      <div class="mob-nav" id="mnav-analysis" onclick="goPage('analysis',this);setMobNav('analysis')">
+        <svg><use href="#ic-ai"/></svg><span>ניתוח AI</span>
+      </div>
+      <div class="mob-nav" id="mnav-simulator" onclick="goPage('simulator',this);setMobNav('simulator')">
+        <svg><use href="#ic-sim"/></svg><span>סימולטור</span>
+      </div>
+      <div class="mob-nav" id="mnav-more" onclick="openMoreMenu()">
+        <svg><use href="#ic-more"/></svg><span>עוד</span>
+      </div>
+    </div>
+  </div>
+</div><!-- /appShell -->
+
+<!-- MORE MENU (mobile) -->
+<div class="more-overlay" id="moreOverlay" onclick="closeMoreMenu()">
+  <div class="more-sheet" id="moreSheet" onclick="event.stopPropagation()">
+    <div class="more-handle"></div>
+    <div class="more-item" onclick="goPageMob('team')"><svg><use href="#ic-team"/></svg> מאגר צוות</div>
+    <div class="more-item" onclick="goPageMob('vault')"><svg><use href="#ic-folder"/></svg> תיקיית המציע</div>
+    <div class="more-item" onclick="goPageMob('import')"><svg><use href="#ic-import"/></svg> ייבוא עובדים</div>
+    <div class="more-item" onclick="goPageMob('settings')"><svg><use href="#ic-set"/></svg> הגדרות</div>
+    <div style="height:1px;background:var(--s5);margin:6px 0"></div>
+    <div class="more-item" onclick="closeMoreMenu();exportAllZip()"><svg><use href="#ic-zip"/></svg> ייצא ZIP</div>
+  </div>
+</div>
+
+<!-- ══════ MODALS ══════ -->
+
+<!-- TENDER MODAL -->
+<div id="tenderModal" class="ovl" onclick="if(event.target===this)closeModal('tenderModal')">
+  <div class="modal" style="max-width:840px">
+    <div id="tmHeader"></div>
+    <div style="padding:7px 18px 0;background:var(--w);border-bottom:1px solid var(--s5)">
+      <div class="atabs" style="margin:0" id="tmTabs"></div>
+    </div>
+    <div class="mb" id="tmBody"></div>
+  </div>
+</div>
+
+<!-- ADD TEAM MODAL -->
+<div id="addTeamModal" class="ovl" onclick="if(event.target===this)closeModal('addTeamModal')">
+  <div class="modal" style="max-width:640px">
+    <div class="mh"><div class="mt">הוספת איש צוות</div><button class="ib" onclick="closeModal('addTeamModal')"><svg width="14" height="14"><use href="#ic-x"/></svg></button></div>
+    <div class="mb">
+      <div class="tabs" id="addTeamTabs">
+        <div class="tab on" onclick="switchTeamTab('personal',this)">פרטים אישיים</div>
+        <div class="tab" onclick="switchTeamTab('exp',this)">תחומי ניסיון</div>
+        <div class="tab" onclick="switchTeamTab('projects',this)">פרויקטים</div>
+      </div>
+      <div id="atPersonal">
+        <div class="fr"><div class="fg"><label class="fl"><span class="req">*</span>שם מלא</label><input class="fi" id="atName" placeholder="שם ומשפחה"></div><div class="fg"><label class="fl"><span class="req">*</span>ת.ז.</label><input class="fi" id="atId" placeholder="9 ספרות"></div></div>
+        <div class="fr"><div class="fg"><label class="fl">תואר מקצועי</label><input class="fi" id="atTitle" placeholder='רו"ח, כלכלן...'></div><div class="fg"><label class="fl">תפקיד</label><input class="fi" id="atRole" placeholder="מנהל ביקורת..."></div></div>
+        <div class="fr"><div class="fg"><label class="fl">שנות ניסיון</label><input class="fi" id="atYears" type="number" min="0"></div><div class="fg"><label class="fl">תאריך לידה</label><input class="fi" id="atBirth" type="date"></div></div>
+        <div class="fr"><div class="fg"><label class="fl">טלפון</label><input class="fi" id="atPhone" placeholder="050-..."></div><div class="fg"><label class="fl">מייל</label><input class="fi" id="atEmail" placeholder="name@firm.co.il"></div></div>
+        <div class="fg"><label class="fl">הסמכות ורישיונות</label><input class="fi" id="atCerts" placeholder='רו"ח, CPA, CISA — מופרד בפסיקים'></div>
+      </div>
+      <div id="atExp" style="display:none">
+        <div style="font-size:12.5px;color:var(--s1);margin-bottom:8px">לחץ לסימון תחומי ניסיון:</div>
+        <div id="expertAreasWrap" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:13px"></div>
+        <button class="btn bgh sm" onclick="promptNewArea()"><svg width="12" height="12"><use href="#ic-plus"/></svg> הוסף קטגוריה</button>
+      </div>
+      <div id="atProjects" style="display:none">
+        <div class="alert ab2" style="margin-bottom:10px;font-size:11.5px">📋 פרויקטים ישמשו בנספח א׳ ובסימולטור</div>
+        <div id="projectsList">
+          <div style="background:var(--bg2);border:1px solid var(--s5);border-radius:9px;padding:12px;margin-bottom:8px">
+            <div class="fr"><div class="fg"><label class="fl">שם הלקוח</label><input class="fi" placeholder="עיריית..."></div><div class="fg"><label class="fl">תחום</label><select class="fs"><option>ביקורת פנימית</option><option>ביקורת שכר</option><option>ביקורת רכש</option><option>ייעוץ כלכלי</option><option>ביקורת IT</option></select></div></div>
+            <div class="fr"><div class="fg"><label class="fl">שנת תחילה</label><input class="fi" type="number" placeholder="2020"></div><div class="fg"><label class="fl">שנת סיום</label><input class="fi" type="number" placeholder="2024"></div></div>
+            <div class="fr"><div class="fg"><label class="fl">היקף שנתי</label><input class="fi" placeholder="₪"></div><div class="fg"><label class="fl">שעות/שנה</label><input class="fi" placeholder="שעות"></div></div>
+            <div class="stl">פרטי ממליץ / איש קשר</div>
+            <div class="fr3"><div class="fg"><label class="fl">שם</label><input class="fi" placeholder="שם"></div><div class="fg"><label class="fl">תפקיד</label><input class="fi" placeholder='גזבר...'></div><div class="fg"><label class="fl">טלפון</label><input class="fi" placeholder="03-..."></div></div>
+            <div class="fr"><div class="fg"><label class="fl">נייד</label><input class="fi" placeholder="05X-..."></div><div class="fg"><label class="fl">מייל</label><input class="fi" placeholder="name@city.gov.il"></div></div>
+            <div class="fg"><label class="fl">תיאור קצר</label><textarea class="ft" placeholder="תיאור העבודה שבוצעה..."></textarea></div>
+          </div>
+        </div>
+        <button class="btn bo sm" onclick="addProjectBlock()"><svg width="12" height="12"><use href="#ic-plus"/></svg> פרויקט נוסף</button>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('addTeamModal')">ביטול</button>
+      <button class="btn bp" onclick="saveTeamMember()"><svg width="13" height="13"><use href="#ic-check"/></svg> שמירה</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD DOC MODAL -->
+<div id="addDocModal" class="ovl" onclick="if(event.target===this)closeModal('addDocModal')">
+  <div class="modal" style="max-width:500px">
+    <div class="mh"><div class="mt">הוספת מסמך יסוד</div><button class="ib" onclick="closeModal('addDocModal')"><svg width="14" height="14"><use href="#ic-x"/></svg></button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl"><span class="req">*</span>שם המסמך</label><input class="fi" id="newDocName" placeholder="לדוגמה: אישור ניהול תקין"></div>
+      <div class="fr">
+        <div class="fg"><label class="fl">סוג</label><select class="fs" id="newDocType"><option value="legal">⚖️ משפטי</option><option value="tax">🧾 מס</option><option value="insurance">🛡️ ביטוח</option><option value="financial">💰 כספי</option></select></div>
+        <div class="fg"><label class="fl">תאריך תפוגה</label><input class="fi" type="date" id="newDocExpiry"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">העלה קובץ PDF</label>
+        <div class="uzone" style="padding:15px" onclick="document.getElementById('newDocFile').click()">
+          <input type="file" id="newDocFile" style="display:none" accept=".pdf,.doc,.docx" onchange="document.getElementById('ndFileName').textContent='✅ '+this.files[0]?.name">
+          <div style="font-size:20px;margin-bottom:4px">📂</div>
+          <div style="font-size:12px;color:var(--s2)">לחץ לבחירת קובץ PDF</div>
+          <div id="ndFileName" style="font-size:11px;color:var(--grn);margin-top:4px"></div>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">התראה ראשונה</label><select class="fs" id="newDocAlert"><option value="60">60 יום לפני</option><option value="30">30 יום לפני</option><option value="14">14 יום לפני</option></select></div>
+        <div class="fg"><label class="fl">מסמך חובה?</label><select class="fs" id="newDocReq"><option value="1">כן — חובה</option><option value="0">לא — אופציונלי</option></select></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('addDocModal')">ביטול</button>
+      <button class="btn bp" onclick="saveNewDoc()"><svg width="13" height="13"><use href="#ic-check"/></svg> שמירה</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW TENDER MODAL -->
+<div id="newTenderModal" class="ovl" onclick="if(event.target===this)closeModal('newTenderModal')">
+  <div class="modal" style="max-width:560px">
+    <div class="mh"><div class="mt">מכרז חדש</div><button class="ib" onclick="closeModal('newTenderModal')"><svg width="14" height="14"><use href="#ic-x"/></svg></button></div>
+    <div class="mb">
+      <div class="fr"><div class="fg"><label class="fl"><span class="req">*</span>שם המכרז</label><input class="fi" id="ntName" placeholder="ביקורת פנימית — עיריית..."></div><div class="fg"><label class="fl"><span class="req">*</span>גוף מזמין</label><input class="fi" id="ntOrg" placeholder="עיריית / מועצה..."></div></div>
+      <div class="fr"><div class="fg"><label class="fl">מספר מכרז</label><input class="fi" id="ntNum" placeholder="2025/XXX/001"></div><div class="fg"><label class="fl">תחום</label><select class="fs" id="ntType"><option>ביקורת פנימית</option><option>ביקורת שכר</option><option>ביקורת רכש</option><option>ייעוץ כלכלי</option><option>ביקורת IT</option><option>ביקורת תמיכות</option></select></div></div>
+      <div class="fr"><div class="fg"><label class="fl"><span class="req">*</span>תאריך הגשה</label><input class="fi" type="date" id="ntDeadline"></div><div class="fg"><label class="fl">היקף כספי</label><input class="fi" id="ntValue" placeholder="₪"></div></div>
+      <div class="fg"><label class="fl">הערות</label><textarea class="ft" id="ntNotes" placeholder="פרטים נוספים..."></textarea></div>
+      <div class="fg">
+        <label class="fl">קובץ מכרז (לניתוח AI)</label>
+        <div class="uzone" style="padding:13px" onclick="document.getElementById('ntFile').click()">
+          <input type="file" id="ntFile" style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.zip">
+          <div style="font-size:18px;margin-bottom:4px">📎</div>
+          <div style="font-size:12px;color:var(--s2)">גרור קובץ מכרז לניתוח AI</div>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn bo" onclick="closeModal('newTenderModal')">ביטול</button>
+      <button class="btn bp" onclick="saveNewTender()"><svg width="13" height="13"><use href="#ic-check"/></svg> שמירה וניתוח</button>
+    </div>
+  </div>
+</div>
+
+<!-- PRINT FRAME -->
+<iframe id="printFrame" style="position:absolute;width:0;height:0;border:none;left:-9999px;top:-9999px"></iframe>
+
+<!-- ══════ SCRIPTS ══════ -->
+<script src="js/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/tenders.js"></script>
+<script src="js/analysis.js"></script>
+<script src="js/team.js"></script>
+<script src="js/simulator.js"></script>
+<script src="js/vault.js"></script>
+<script src="js/import.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/print.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

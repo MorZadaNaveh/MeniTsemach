@@ -1,0 +1,50 @@
+/* ══ MOBILE ══ */
+@media(max-width:768px){
+  .shell{flex-direction:column}
+  .sb{display:none}
+  .main{height:100vh}
+  .content{padding:14px 14px 80px}
+  .g4{grid-template-columns:1fr 1fr;gap:9px}
+  .g2,.g3{grid-template-columns:1fr;gap:10px}
+  .agrid{grid-template-columns:1fr}
+  .fr,.fr3{grid-template-columns:1fr}
+  .topbar{height:52px;padding:0 14px}
+  .modal{max-width:100%;width:100%;border-radius:18px 18px 0 0;position:fixed;bottom:0;left:0;right:0;margin:0;max-height:92vh;transform:translateY(100%)}
+  .ovl.on .modal{transform:translateY(0)}
+  .mob-bar{display:flex!important}
+  .mob-top-logo{display:flex!important}
+  .desk-only{display:none!important}
+  .atable{font-size:10.5px}
+  .atable th,.atable td{padding:5px 6px}
+  .zip-fn{font-size:9.5px}
+}
+
+/* ══ MOBILE BOTTOM NAV ══ */
+.mob-bar{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--w);border-top:1px solid var(--s5);z-index:100;padding:0;padding-bottom:env(safe-area-inset-bottom)}
+.mob-bar-inner{display:flex;height:58px}
+.mob-nav{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--s3);font-size:9px;font-weight:600;transition:all .13s;touch-action:manipulation;padding:4px 0}
+.mob-nav.on{color:var(--grn)}
+.mob-nav svg{width:20px;height:20px}
+.mob-nav.on svg{stroke:var(--grn)}
+.mob-top-logo{display:none;align-items:center;gap:9px}
+.mob-top-logo .sb-ico{width:30px;height:30px}
+.mob-top-logo .sb-ico svg{width:18px;height:18px}
+.mob-name{font-weight:900;font-size:15px;color:var(--navy)}
+
+/* ══ MORE MENU ══ */
+.more-overlay{position:fixed;inset:0;background:rgba(18,48,42,.5);backdrop-filter:blur(3px);z-index:150;opacity:0;pointer-events:none;transition:opacity .2s}
+.more-overlay.on{opacity:1;pointer-events:all}
+.more-sheet{position:fixed;bottom:0;left:0;right:0;background:var(--w);border-radius:18px 18px 0 0;padding:8px 14px 20px;padding-bottom:calc(20px + env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .25s cubic-bezier(.34,1.56,.64,1);z-index:151}
+.more-sheet.on{transform:translateY(0)}
+.more-handle{width:36px;height:4px;background:var(--s4);border-radius:2px;margin:8px auto 14px}
+.more-item{display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:10px;cursor:pointer;color:var(--navy);font-size:14px;font-weight:500;transition:all .13s;touch-action:manipulation}
+.more-item:hover,.more-item:active{background:var(--grn-light);color:var(--grn)}
+.more-item svg{width:20px;height:20px;color:var(--s2);flex-shrink:0}
+.more-item.on svg,.more-item.on{color:var(--grn)}
+
+/* ══ PRINT ══ */
+@media print{
+  body{direction:rtl;font-family:'Heebo',sans-serif;background:#fff;padding:15mm 20mm;overflow:auto}
+  .shell,.mob-bar,.more-overlay,.more-sheet{display:none!important}
+  .print-doc{display:block!important}
+}
