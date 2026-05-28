@@ -79,18 +79,31 @@ async function extractFileText(file){
   throw new Error('סוג קובץ לא נתמך: ' + file.name.split('.').pop());
 }
 
-/* ── Call Netlify Function → Gemini AI ── */
+/* ── Call Netlify Function → Gemini AI (with client-side retries) ── */
 async function callAIForAnalysis(content, fileName, wasTruncated){
-  const response = await fetch('/.netlify/functions/analyze', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: content, fileName, truncated: wasTruncated })
-  });
-  if(!response.ok){
+  const MAX_RETRIES = 3;
+  const RETRY_DELAYS = [3000, 6000, 10000];
+
+  for(let attempt = 0; attempt < MAX_RETRIES; attempt++){
+    const response = await fetch('/.netlify/functions/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: content, fileName, truncated: wasTruncated })
+    });
+
+    if(response.ok) return await response.json();
+
     const err = await response.json().catch(()=>({error:'Unknown'}));
+    const retryable = response.status === 429 || response.status === 503;
+
+    if(retryable && attempt < MAX_RETRIES - 1){
+      console.log(`Retry ${attempt+1}/${MAX_RETRIES} after ${response.status}, waiting ${RETRY_DELAYS[attempt]}ms...`);
+      await new Promise(r=>setTimeout(r, RETRY_DELAYS[attempt]));
+      continue;
+    }
+
     throw new Error(err.error || 'API error: ' + response.status);
   }
-  return await response.json();
 }
 
 /* ── Main analysis flow ── */

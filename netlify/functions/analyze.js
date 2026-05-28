@@ -37,7 +37,7 @@ exports.handler = async function(event) {
   }
 
   const apiKey = loadEnvKey() || process.env.GEMINI_API_KEY;
-  console.log('API key loaded:', apiKey ? apiKey.slice(0,10) + '...' + apiKey.slice(-4) + ' (' + apiKey.length + ' chars)' : 'MISSING');
+  console.log('API key loaded:', apiKey ? 'yes (' + apiKey.length + ' chars)' : 'MISSING');
   if (!apiKey) {
     return { statusCode: 500, headers, body: JSON.stringify({ error: 'GEMINI_API_KEY not configured' }) };
   }
@@ -116,55 +116,38 @@ ${text}
 - החזר JSON תקין בלבד.`;
 
   const model = 'gemini-2.5-flash';
-  const MAX_RETRIES = 4;
-  const RETRY_DELAYS = [3000, 5000, 8000];
 
   try {
-    let response, data;
-
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      console.log(`Attempt ${attempt + 1}/${MAX_RETRIES} with ${model}`);
-
-      response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: {
-              temperature: 0.1,
-              maxOutputTokens: 8192,
-              responseMimeType: 'application/json',
-              ...(model.includes('2.5') ? { thinkingConfig: { thinkingBudget: 0 } } : {})
-            }
-          })
-        }
-      );
-
-      if (response.ok) break;
-
-      const errText = await response.text();
-      console.error(`Attempt ${attempt + 1} error:`, response.status, errText.slice(0, 200));
-
-      // Retry on 503 (overloaded) or 429 (rate limit)
-      if ((response.status === 503 || response.status === 429) && attempt < MAX_RETRIES - 1) {
-        const delay = RETRY_DELAYS[attempt] || 5000;
-        console.log(`Retrying in ${delay}ms...`);
-        await new Promise(r => setTimeout(r, delay));
-        continue;
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 8192,
+            responseMimeType: 'application/json',
+            thinkingConfig: { thinkingBudget: 0 }
+          }
+        })
       }
+    );
 
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Gemini error:', response.status, errText.slice(0, 200));
       let msg = 'AI API error: ' + response.status;
       if (response.status === 429) msg = 'חריגת מכסה — נסה שוב בעוד דקה';
       else if (response.status === 503) msg = 'השרת עמוס — נסה שוב בעוד רגע';
       else if (response.status === 400) {
         try { msg = JSON.parse(errText).error?.message || msg; } catch {}
       }
-      return { statusCode: 502, headers, body: JSON.stringify({ error: msg }) };
+      return { statusCode: response.status === 429 ? 429 : response.status === 503 ? 503 : 502, headers, body: JSON.stringify({ error: msg }) };
     }
 
-    data = await response.json();
+    const data = await response.json();
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawText) {
       return { statusCode: 502, headers, body: JSON.stringify({ error: 'Empty AI response' }) };
