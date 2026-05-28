@@ -71,33 +71,32 @@ ${text}
   "tenderName": "שם המכרז המלא",
   "orgName": "שם הגוף המזמין",
   "tenderNumber": "מספר המכרז",
-  "type": "סוג המכרז (ביקורת פנימית / ביקורת שכר / ייעוץ / תקשורת וכו')",
-  "submitDeadline": "תאריך ושעת הגשה בפורמט DD.MM.YYYY | HH:MM",
+  "type": "סוג המכרז",
+  "submitDeadline": "תאריך ושעת הגשה אחרונה בפורמט DD/MM/YYYY בשעה HH:MM",
   "daysLeft": 0,
   "value": "היקף כספי / אומדן",
-  "duration": "תקופת התקשרות",
-  "winners": "מספר זוכים",
+  "duration": "תקופת התקשרות מלאה כולל הארכות",
+  "winners": "מספר זוכים ופירוט",
+  "hoursScope": "היקף שעות שנתי מוערך",
   "tenderBond": "ערבות מכרז (סכום ותוקף)",
   "performanceBond": "ערבות ביצוע",
-  "liabilityBond": "ערבות אחריות",
-  "insurance": "דרישות ביטוח",
   "scope": "תיאור מפורט של היקף העבודה",
-  "hoursScope": "היקף בשעות אם צוין",
   "timeline": [
-    {"label": "שם האירוע", "date": "DD.MM.YYYY"}
+    {"label": "שם האירוע", "date": "DD/MM/YYYY בשעה HH:MM"}
   ],
   "contact": {"name": "שם", "email": "מייל", "phone": "טלפון", "method": "אופן שליחת שאלות"},
-  "thresholds": ["תנאי סף 1", "תנאי סף 2"],
+  "adminThresholds": ["תנאי סף מנהלי 1", "תנאי סף מנהלי 2"],
+  "professionalThresholds": [
+    {"field": "שם התחום", "detail": "פירוט תנאי הסף"}
+  ],
   "qualityScoring": [
-    {"l": "שם הקריטריון", "w": 0, "m": 0}
+    {"l": "שם מדד האיכות", "detail": "פירוט הניקוד — תיאור מפורט של מה נבדק ואיך", "w": "30%"}
   ],
+  "minQualityScore": 75,
   "priceScoring": [
-    {"l": "שם קטגוריית מחיר", "w": 0}
+    {"l": "שם קטגוריית מחיר", "w": "35%"}
   ],
-  "scoringNote": "הערה כללית על מנגנון הניקוד (יחס איכות/מחיר, נוסחה וכו')",
-  "teamReq": [
-    {"role": "תפקיד", "req": "דרישות מינימום"}
-  ],
+  "scoringNote": "הערה כללית על מנגנון הניקוד (יחס איכות/מחיר, נוסחה, ציון מזערי וכו')",
   "highlights": ["דגש חשוב 1", "דגש חשוב 2"],
   "flags": ["אזהרה/סיכון 1", "אזהרה/סיכון 2"],
   "score": 75
@@ -106,13 +105,18 @@ ${text}
 הנחיות חשובות:
 - daysLeft: חשב מספר ימים מהיום (${new Date().toISOString().slice(0, 10)}) עד מועד ההגשה. אם עבר — 0.
 - score: הערך 0-100 את סיכוי הזכייה של משרד רו"ח בינוני.
-- thresholds: חלץ את כל תנאי הסף — כל אחד בנפרד.
-- qualityScoring: w = משקל באחוזים, m = ניקוד מקסימלי. אם רק אחד מהם צוין, השתמש באותו ערך לשניהם.
+- adminThresholds: תנאי סף מנהליים — רישום כדין, חוק עסקאות גופים ציבוריים, עסק חי, ייצוג הולם וכו'. כל אחד בנפרד.
+- professionalThresholds: תנאי סף מקצועיים בטבלה — כל שורה עם field (תחום כמו "השכלה", "ניסיון מקצועי", "היקף פרויקט", "סוג פרויקט") ו-detail (פירוט הדרישה). חלץ את כולם.
+- qualityScoring: כל מדד איכות עם l = שם, detail = פירוט מלא של מה נבדק (כולל חלוקת ניקוד פנימית אם יש), w = משקל באחוזים (כמחרוזת עם %).
+- minQualityScore: ציון איכות מזערי למעבר לשלב הבא. null אם לא צוין.
 - priceScoring: אם יש מרכיב מחיר עם חלוקה לקטגוריות, פרט. אחרת null.
-- timeline: כלול מועד שאלות הבהרה, מועד מענה, סיור קבלנים, מועד הגשה — כל מה שמצוין.
-- contact: חפש כתובת דוא"ל, טלפון, מוקד תמיכה, או כל פרט קשר לשאלות הבהרה. גם אם זה מוקד תמיכה כללי (כמו moked@mail.gov.il) — זה נחשב. name = שם איש קשר או "מוקד תמיכה". אל תחזיר null אם יש כתובת מייל כלשהי במכרז.
-- highlights: 3-6 נקודות חשובות שכל מגיש חייב לדעת.
+- timeline: כלול מועד שאלות הבהרה, מועד תחילת הגשה, מועד אחרון להגשה, ראיון — כל מה שמצוין. date בפורמט DD/MM/YYYY בשעה HH:MM.
+- contact: חפש כתובת דוא"ל, טלפון, מוקד תמיכה, או כל פרט קשר. אל תחזיר null אם יש כתובת מייל כלשהי במכרז.
+- highlights: 3-6 נקודות חשובות (דגשים מיוחדים) שכל מגיש חייב לדעת.
 - flags: 2-4 סיכונים או אזהרות.
+- winners: ציין מספר זוכים + פירוט (למשל "יועץ אחד בלבד").
+- duration: כלול את תקופת ההתקשרות הבסיסית + אופציות הארכה (למשל "12 חודשים + הארכה עד 48 חודשים נוספים").
+- hoursScope: היקף שעות שנתי מוערך אם צוין.
 - החזר JSON תקין בלבד.`;
 
   const model = 'gemini-2.5-flash';
@@ -174,9 +178,9 @@ ${text}
     if (result.score != null) result.score = Math.min(100, Math.max(0, parseInt(result.score) || 0));
 
     // Ensure arrays
-    if (!Array.isArray(result.thresholds)) result.thresholds = [];
+    if (!Array.isArray(result.adminThresholds)) result.adminThresholds = [];
+    if (!Array.isArray(result.professionalThresholds)) result.professionalThresholds = [];
     if (!Array.isArray(result.qualityScoring)) result.qualityScoring = [];
-    if (!Array.isArray(result.teamReq)) result.teamReq = [];
     if (!Array.isArray(result.highlights)) result.highlights = [];
     if (!Array.isArray(result.flags)) result.flags = [];
     if (!Array.isArray(result.timeline)) result.timeline = [];
