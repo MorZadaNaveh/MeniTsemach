@@ -393,23 +393,33 @@ function switchAITab(tab, el){
     const hoursHtml = r.hoursScope ? `
       <div class="stl">היקף בשעות</div>
       <div style="background:var(--bg2);border:1px solid var(--s5);border-radius:9px;padding:10px 13px;font-size:13px;line-height:1.6">${r.hoursScope}</div>` : '';
+    const cards = [
+      ['מועד הגשה', r.submitDeadline, 'color:var(--red);font-weight:700'],
+      ['היקף כספי', r.value],
+      ['משך התקשרות', r.duration],
+      ['מספר זוכים', r.winners],
+      ['ערבות מכרז', r.tenderBond],
+      ['ערבות ביצוע', r.performanceBond],
+    ].filter(c => c[1]).map(c =>
+      `<div class="ai-result-card"><div class="ai-result-label">${c[0]}</div><div class="ai-result-value"${c[2]?' style="'+c[2]+'"':''}>${c[1]}</div></div>`
+    ).join('');
+    const scopeHtml = r.scope ? `
+      <div class="stl">היקף העבודה</div>
+      <div style="background:var(--grn-light);border:1px solid var(--grn-border);border-radius:9px;padding:10px 13px;font-size:13px;line-height:1.6">${r.scope}</div>` : '';
+    const highlightsHtml = (r.highlights||[]).length ? `
+      <div class="stl">דגשים חשובים</div>
+      ${r.highlights.map(h=>`<div class="alert ab2" style="margin-bottom:5px;font-size:11.5px">ℹ️ ${h}</div>`).join('')}` : '';
+    const flagsHtml = (r.flags||[]).length ? `
+      <div class="stl" style="color:var(--amb)">⚠ אזהרות</div>
+      ${r.flags.map(f=>`<div class="alert aa" style="margin-bottom:5px;font-size:11.5px">⚠️ ${f}</div>`).join('')}` : '';
     body.innerHTML = `
-      <div class="agrid">
-        <div class="ai-result-card"><div class="ai-result-label">מועד הגשה</div><div class="ai-result-value" style="color:var(--red);font-weight:700">${r.submitDeadline||'TBD'}</div></div>
-        <div class="ai-result-card"><div class="ai-result-label">היקף כספי</div><div class="ai-result-value">${r.value||'TBD'}</div></div>
-        <div class="ai-result-card"><div class="ai-result-label">משך התקשרות</div><div class="ai-result-value">${r.duration||'TBD'}</div></div>
-        <div class="ai-result-card"><div class="ai-result-label">מספר זוכים</div><div class="ai-result-value">${r.winners||'TBD'}</div></div>
-        <div class="ai-result-card"><div class="ai-result-label">ערבות מכרז</div><div class="ai-result-value">${r.tenderBond||'TBD'}</div></div>
-        <div class="ai-result-card"><div class="ai-result-label">ערבות ביצוע</div><div class="ai-result-value">${r.performanceBond||'TBD'}</div></div>
-      </div>
+      ${cards?'<div class="agrid">'+cards+'</div>':''}
       ${timelineHtml}
       ${contactHtml}
-      <div class="stl">היקף העבודה</div>
-      <div style="background:var(--grn-light);border:1px solid var(--grn-border);border-radius:9px;padding:10px 13px;font-size:13px;line-height:1.6">${r.scope||'TBD'}</div>
+      ${scopeHtml}
       ${hoursHtml}
-      <div class="stl">דגשים חשובים</div>
-      ${(r.highlights||[]).map(h=>`<div class="alert ab2" style="margin-bottom:5px;font-size:11.5px">ℹ️ ${h}</div>`).join('')}
-      ${(r.flags||[]).length?`<div class="stl" style="color:var(--amb)">⚠ אזהרות</div>${(r.flags||[]).map(f=>`<div class="alert aa" style="margin-bottom:5px;font-size:11.5px">⚠️ ${f}</div>`).join('')}`:''}`;
+      ${highlightsHtml}
+      ${flagsHtml}`;
   }
   else if(tab==='scoring'){
     const qs=r.qualityScoring||[];
