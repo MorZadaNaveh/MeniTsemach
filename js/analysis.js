@@ -1,6 +1,10 @@
 'use strict';
 
 /* ═════ AI ANALYSIS ═════ */
+if(typeof pdfjsLib!=='undefined'){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
 let uploadedFiles = [];
 
 function handleFileDrop(e){
@@ -25,118 +29,124 @@ function resetUpload(){
   document.getElementById('uploadActions').style.display='none';
 }
 
+/* ── Extract text from uploaded file ── */
+const MAX_TEXT_LENGTH = 30000;
+const TAIL_LENGTH = 5000; // also grab last 5K chars for contact/deadline info at end
+
+function smartTruncate(text){
+  if(text.length <= MAX_TEXT_LENGTH) return { text, truncated: false };
+  // Keep beginning + end of document (contact/deadlines often at end)
+  const head = text.slice(0, MAX_TEXT_LENGTH - TAIL_LENGTH);
+  const tail = text.slice(-TAIL_LENGTH);
+  return { text: head + '\n\n[...חלק אמצעי הושמט...]\n\n' + tail, truncated: true };
+}
+
+async function extractFileText(file){
+  const name = file.name.toLowerCase();
+
+  // TXT / CSV
+  if(file.type.includes('text') || name.endsWith('.txt') || name.endsWith('.csv')){
+    const text = await file.text();
+    return smartTruncate(text);
+  }
+
+  // PDF — extract ALL pages first, then truncate smartly
+  if(name.endsWith('.pdf')){
+    if(typeof pdfjsLib==='undefined') throw new Error('PDF.js לא נטען — רענן את הדף');
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+    let fullText = '';
+    for(let i=1; i<=pdf.numPages; i++){
+      const page = await pdf.getPage(i);
+      const tc = await page.getTextContent();
+      const pageText = tc.items.map(it=>it.str).join(' ');
+      fullText += pageText + '\n';
+    }
+    return smartTruncate(fullText);
+  }
+
+  // DOCX
+  if(name.endsWith('.docx')){
+    if(typeof mammoth==='undefined') throw new Error('Mammoth.js לא נטען — רענן את הדף');
+    const buf = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({arrayBuffer: buf});
+    return smartTruncate(result.value);
+  }
+
+  // Unsupported
+  if(name.endsWith('.doc')) throw new Error('פורמט .doc ישן — שמור כ-.docx ונסה שוב');
+  if(name.endsWith('.xls') || name.endsWith('.xlsx')) throw new Error('קבצי Excel לא נתמכים — שמור כ-.pdf או .txt');
+  throw new Error('סוג קובץ לא נתמך: ' + file.name.split('.').pop());
+}
+
+/* ── Call Netlify Function → Gemini AI ── */
+async function callAIForAnalysis(content, fileName, wasTruncated){
+  const response = await fetch('/.netlify/functions/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: content, fileName, truncated: wasTruncated })
+  });
+  if(!response.ok){
+    const err = await response.json().catch(()=>({error:'Unknown'}));
+    throw new Error(err.error || 'API error: ' + response.status);
+  }
+  return await response.json();
+}
+
+/* ── Main analysis flow ── */
 async function runAIAnalysis(){
   if(!uploadedFiles.length){ alert('נא לבחור קובץ'); return; }
   document.getElementById('uploadCard').style.display='none';
   document.getElementById('aiProgress').style.display='block';
   document.getElementById('aiResultSection').style.display='none';
 
-  const steps=[
-    {t:'קורא את הקובץ...',p:15},
-    {t:'שולח ל-Claude AI...',p:35},
-    {t:'AI מחלץ תנאי סף וניקוד...',p:55},
-    {t:'מזהה דרישות צוות ותאריכים...',p:75},
-    {t:'מסמן חריגות ודגשים...',p:90},
-    {t:'מכין תוצאות...',p:100}
-  ];
   const progText = document.getElementById('aiProgressText');
   const progBar  = document.getElementById('aiProgressBar');
+  const file = uploadedFiles[0];
+  uploadedFileName = file.name;
 
-  // Read file content
   try {
-    const file = uploadedFiles[0];
-    uploadedFileName = file.name;
-    if(file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.csv')){
-      uploadedFileContent = await file.text();
-    } else {
-      // For PDF/DOCX we can't read natively in browser — use file name + mock content
-      uploadedFileContent = `[קובץ: ${file.name}, גודל: ${(file.size/1024).toFixed(0)}KB]\nאנא נתח מכרז זה.`;
-    }
-  } catch(e){ uploadedFileContent='[לא ניתן לקרוא קובץ]'; }
+    // Step 1: Extract text
+    progText.textContent = 'קורא את הקובץ...';
+    progBar.style.width = '15%';
+    const { text, truncated } = await extractFileText(file);
+    uploadedFileContent = text;
 
-  // Animate progress
-  let si=0;
-  const iv=setInterval(()=>{
-    if(si<steps.length){
-      progText.textContent=steps[si].t;
-      progBar.style.width=steps[si].p+'%';
-      si++;
+    if(text.trim().length < 50){
+      throw new Error('לא הצלחתי לחלץ טקסט מהקובץ — ייתכן שהקובץ סרוק (תמונה) או ריק');
     }
-  },600);
 
-  // Call Claude API
-  setTimeout(async()=>{
+    // Step 2: Send to AI
+    progText.textContent = 'שולח ל-AI לניתוח...';
+    progBar.style.width = '35%';
+
+    // Animate progress while waiting
+    let pct = 35;
+    const iv = setInterval(()=>{
+      if(pct < 90){ pct += 3; progBar.style.width = pct+'%'; }
+      if(pct > 50 && pct < 60) progText.textContent = 'AI מחלץ תנאי סף וניקוד...';
+      if(pct > 65 && pct < 75) progText.textContent = 'מזהה דרישות צוות ותאריכים...';
+      if(pct > 80) progText.textContent = 'מסמן חריגות ודגשים...';
+    }, 500);
+
+    const result = await callAIForAnalysis(text, file.name, truncated);
     clearInterval(iv);
-    progBar.style.width='100%';
-    try{
-      const result = await callClaudeForAnalysis(uploadedFileContent, uploadedFileName);
-      currentAIResult = result;
-      showAIResult(result);
-    }catch(err){
-      console.error(err);
-      // Fallback to demo result
-      currentAIResult = getDemoAnalysis(uploadedFileName);
-      showAIResult(currentAIResult);
-    }
-  }, steps.length*600+200);
-}
 
-async function callClaudeForAnalysis(content, fileName){
-  const prompt = `אתה מומחה בניתוח מכרזים ציבוריים בישראל. נתח את מכרז הבאה ומצא את כל המידע הרלוונטי.
+    progText.textContent = 'מכין תוצאות...';
+    progBar.style.width = '100%';
 
-שם הקובץ: ${fileName}
-תוכן הקובץ:
-${content.slice(0,8000)}
+    await new Promise(r=>setTimeout(r, 300));
+    currentAIResult = result;
+    showAIResult(result);
 
-אנא חלץ ותחזיר JSON מדויק עם השדות הבאים:
-{
-  "tenderName": "שם המכרז",
-  "orgName": "שם הגוף המזמין",
-  "tenderNumber": "מספר המכרז",
-  "type": "סוג המכרז (ביקורת פנימית / ביקורת שכר / ייעוץ כלכלי וכו')",
-  "submitDeadline": "תאריך ושעת הגשה",
-  "daysLeft": "מספר ימים עד הגשה (מספר בלבד)",
-  "value": "היקף כספי אומדן",
-  "duration": "תקופת התקשרות",
-  "winners": "מספר זוכים",
-  "tenderBond": "ערבות מכרז",
-  "performanceBond": "ערבות ביצוע",
-  "liabilityBond": "ערבות אחריות",
-  "insurance": "דרישות ביטוח",
-  "scope": "תיאור היקף העבודה",
-  "thresholds": ["תנאי סף 1", "תנאי סף 2", "..."],
-  "qualityScoring": [
-    {"l": "שם הקריטריון", "w": 30, "m": 30},
-    ...
-  ],
-  "teamReq": [
-    {"role": "שם התפקיד", "req": "דרישות מינימום"},
-    ...
-  ],
-  "highlights": ["דגש חשוב 1", "דגש חשוב 2", "..."],
-  "flags": ["אזהרה 1", "אזהרה 2", "..."],
-  "score": "ציון סיכוי זכייה 0-100 לפי הערכת AI"
-}
-
-החזר JSON בלבד, ללא טקסט נוסף.`;
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      model:'claude-sonnet-4-20250514',
-      max_tokens:4000,
-      messages:[{role:'user',content:prompt}]
-    })
-  });
-
-  if(!response.ok) throw new Error('API error: '+response.status);
-  const data = await response.json();
-  const raw = data.content[0]?.text || '';
-  // Parse JSON
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if(!jsonMatch) throw new Error('No JSON in response');
-  return JSON.parse(jsonMatch[0]);
+  } catch(err) {
+    console.error('Analysis error:', err);
+    progBar.style.width = '100%';
+    // Fall back to demo data
+    alert('שגיאה בניתוח: ' + err.message + '\nמציג נתוני דמו.');
+    currentAIResult = getDemoAnalysis(uploadedFileName);
+    showAIResult(currentAIResult);
+  }
 }
 
 /* ── Hardcoded tender data for demo ── */
@@ -370,13 +380,15 @@ function switchAITab(tab, el){
       <div class="ai-timeline">
         ${r.timeline.map((t,i)=>`<div class="ai-timeline-item${i===r.timeline.length-1?' last':''}"><div class="ai-timeline-dot"></div><div class="ai-timeline-content"><span class="ai-timeline-label">${t.label}</span><span class="ai-timeline-date">${t.date}</span></div></div>`).join('')}
       </div>` : '';
-    const contactHtml = r.contact ? `
+    const c = r.contact;
+    const hasContact = c && (c.name || c.email || c.phone || c.method);
+    const contactHtml = hasContact ? `
       <div class="stl">איש קשר לשו"ת</div>
       <div class="ai-contact-card">
-        <div class="ai-contact-row"><span class="ai-contact-icon">👤</span><strong>${r.contact.name}</strong></div>
-        <div class="ai-contact-row"><span class="ai-contact-icon">📧</span><a href="mailto:${r.contact.email}" style="color:var(--grn);font-weight:600">${r.contact.email}</a></div>
-        ${r.contact.phone&&r.contact.phone!=='—'?`<div class="ai-contact-row"><span class="ai-contact-icon">📞</span>${r.contact.phone}</div>`:''}
-        <div class="ai-contact-row"><span class="ai-contact-icon">📋</span>${r.contact.method}</div>
+        ${c.name?`<div class="ai-contact-row"><span class="ai-contact-icon">👤</span><strong>${c.name}</strong></div>`:''}
+        ${c.email?`<div class="ai-contact-row"><span class="ai-contact-icon">📧</span><a href="mailto:${c.email}" style="color:var(--grn);font-weight:600">${c.email}</a></div>`:''}
+        ${c.phone&&c.phone!=='—'?`<div class="ai-contact-row"><span class="ai-contact-icon">📞</span>${c.phone}</div>`:''}
+        ${c.method?`<div class="ai-contact-row"><span class="ai-contact-icon">📋</span>${c.method}</div>`:''}
       </div>` : '';
     const hoursHtml = r.hoursScope ? `
       <div class="stl">היקף בשעות</div>
@@ -430,7 +442,7 @@ function switchAITab(tab, el){
   }
   else if(tab==='docs'){
     body.innerHTML=`
-      <div class="alert ag2" style="margin-bottom:12px">✨ Claude AI ייצר את הנספחים לפי המידע שחולץ</div>
+      <div class="alert ag2" style="margin-bottom:12px">✨ AI ייצר את הנספחים לפי המידע שחולץ</div>
       <div class="atabs" id="aiAppTabsRow">
         ${[['exp',"נספח א' — ניסיון"],['team',"נספח ב' — צוות"],['decl',"נספח ג' — הצהרות"]].map(([v,l])=>
           `<div class="atab ${v==='exp'?'on':''}" onclick="switchAIAppTab('${v}')">${l}</div>`

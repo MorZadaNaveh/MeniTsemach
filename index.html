@@ -32,7 +32,7 @@
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
       <polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
     </symbol>
-    <symbol id="ic-ai" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+    <symbol id="ic-ai" viewBox="0 0 24 24" fill="noneiuhj" stroke="currentColor" stroke-width="1.8">
       <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
       <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
     </symbol>
@@ -279,7 +279,7 @@
         <div class="card cp" id="uploadCard" style="margin-bottom:13px">
           <div class="gacc"></div>
           <div class="ct" style="margin-bottom:3px">העלאת קובץ מכרז לניתוח AI</div>
-          <div class="cs" style="margin-bottom:12px">Claude AI יחלץ את כל המידע: תנאי סף, ניקוד, דרישות צוות, תאריכים, ערבויות ועוד</div>
+          <div class="cs" style="margin-bottom:12px">AI יחלץ את כל המידע: תנאי סף, ניקוד, דרישות צוות, תאריכים, ערבויות ועוד</div>
           <div class="uzone" id="uploadZone" onclick="document.getElementById('tenderFileInp').click()"
             ondragover="event.preventDefault();this.classList.add('drag')"
             ondragleave="this.classList.remove('drag')"
@@ -292,7 +292,7 @@
           </div>
           <div id="uploadActions" style="margin-top:10px;display:none">
             <button class="btn bai" onclick="runAIAnalysis()">
-              🤖 נתח עם Claude AI
+              🤖 נתח עם AI
             </button>
             <button class="btn bo sm" style="margin-right:8px" onclick="resetUpload()">ביטול</button>
           </div>
@@ -302,7 +302,7 @@
         <div id="aiProgress" style="display:none" class="card cp">
           <div class="ai-thinking">
             <div class="ai-spinner"></div>
-            <div style="font-weight:700;font-size:15px;color:var(--navy);margin-bottom:5px">Claude AI מנתח את המכרז...</div>
+            <div style="font-weight:700;font-size:15px;color:var(--navy);margin-bottom:5px">AI מנתח את המכרז...</div>
             <div id="aiProgressText" style="font-size:12.5px;color:var(--s2)">קורא את הקובץ...</div>
             <div style="margin-top:12px;background:var(--s5);border-radius:5px;height:6px;overflow:hidden">
               <div id="aiProgressBar" style="height:100%;background:linear-gradient(90deg,var(--grn),var(--grn3));border-radius:5px;width:0%;transition:width .5s"></div>
@@ -316,7 +316,7 @@
             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
               <div>
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-                  <span style="background:var(--grn-light);color:var(--grn);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid var(--grn-border)">✨ Claude AI</span>
+                  <span style="background:var(--grn-light);color:var(--grn);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid var(--grn-border)">✨ AI</span>
                   <span id="aiAnalysisDate" style="font-size:10.5px;color:var(--s3)"></span>
                 </div>
                 <div class="ct" id="aiTenderName">שם המכרז</div>
@@ -357,7 +357,7 @@
         <div class="card cp" style="margin-bottom:12px">
           <div class="gacc"></div>
           <div class="ct" style="margin-bottom:3px">סימולטור זכייה</div>
-          <div class="cs" style="margin-bottom:12px">Claude AI ממפה את הצוות האופטימלי ומחשב סיכוי זכייה</div>
+          <div class="cs" style="margin-bottom:12px">AI ממפה את הצוות האופטימלי ומחשב סיכוי זכייה</div>
           <div style="display:flex;gap:8px;align-items:flex-end">
             <div class="fg" style="flex:1;margin-bottom:0">
               <label class="fl">בחר מכרז לסימולציה</label>
@@ -667,6 +667,8 @@
 <iframe id="printFrame" style="position:absolute;width:0;height:0;border:none;left:-9999px;top:-9999px"></iframe>
 
 <!-- ══════ SCRIPTS ══════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
 <script src="js/data.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/nav.js"></script>
