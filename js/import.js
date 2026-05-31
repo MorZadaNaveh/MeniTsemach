@@ -33,19 +33,11 @@ function renderMappingGrid(){
 function doImport(){
   const btn=document.getElementById('importBtn');
   btn.innerHTML='<span class="spn"></span> מייבא...';btn.disabled=true;
+  // TODO: implement actual CSV/Excel parsing from uploaded file
   setTimeout(()=>{
-    const newMs=[
-      {name:'ישראל ישראלי',title:'רו"ח',role:'מבקר כספים',years:8,color:'#2d6a4f',ini:'יי',areas:['ביקורת פנימית'],certs:['רו"ח']},
-      {name:'רות כהנא',title:'',role:'מנהלת שכר',years:11,color:'#7c3d12',ini:'רכ',areas:['חשבות שכר'],certs:['CPA']},
-      {name:'בני ארוש',title:'',role:'אנליסט',years:4,color:'#1e5c9a',ini:'בא',areas:['ניתוח נתונים'],certs:['BA כלכלה']}
-    ];
-    teamMembers.push(...newMs);
-    renderTeam();
-    btn.innerHTML='✅ יובאו 3 עובדים!';btn.className='btn bgg';btn.disabled=false;
-    setTimeout(()=>{
-      document.getElementById('importTab3').innerHTML=`<div class="alert ag2">✅ <strong>ייבוא הושלם!</strong> 3 עובדים נוספו. <button class="btn bo sm" onclick="goPage('team',document.getElementById('nav-team'))" style="margin-right:8px">עבור לצוות →</button></div>`;
-    },500);
-  },2000);
+    btn.innerHTML='ייבוא';btn.className='btn bp';btn.disabled=false;
+    document.getElementById('importTab3').innerHTML=`<div class="alert aa">⚠️ ייבוא קבצים עדיין בפיתוח. הוסף עובדים ידנית דרך מסך הצוות.</div>`;
+  },1000);
 }
 
 function downloadTemplate(){

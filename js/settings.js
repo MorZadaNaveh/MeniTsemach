@@ -8,6 +8,7 @@ function saveSettings(){
   BIDDER.email=document.getElementById('setEmail').value;
   BIDDER.vat=document.getElementById('setVat').value;
   BIDDER.signatory=document.getElementById('setSign').value;
+  saveCompany();
   const d=document.createElement('div');d.className='alert ag2';d.style.marginTop='8px';d.innerHTML='✅ הגדרות נשמרו בהצלחה!';
   document.getElementById('setFirm').closest('.card').appendChild(d);
   setTimeout(()=>d.remove(),3000);
@@ -15,12 +16,7 @@ function saveSettings(){
 
 function renderUsers(){
   const g=document.getElementById('usersGrid');if(!g) return;
-  [['רון פישמן','מנהל','var(--grn)'],['מירי לוי','עורכת','var(--navy)'],['דניאל ברק','צופה','var(--s2)']].forEach(([n,r,c])=>{
-    const div=document.createElement('div');
-    div.style.cssText='display:flex;align-items:center;gap:7px;padding:6px 9px;background:var(--bg2);border:1px solid var(--s5);border-radius:7px;margin-bottom:5px';
-    div.innerHTML=`<div style="width:24px;height:24px;border-radius:6px;background:${c};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:${c==='var(--grn)'?'#fff':'#fff'};flex-shrink:0">${n[0]}</div><div style="flex:1;font-size:12.5px;font-weight:600">${n}</div><span class="badge bn" style="font-size:9px">${r}</span>`;
-    g.appendChild(div);
-  });
+  g.innerHTML='<div style="font-size:12px;color:var(--s3);padding:8px">ניהול משתמשים יתווסף בגרסה הבאה.</div>';
 }
 
 /* ═════ NEW TENDER ═════ */
@@ -41,10 +37,10 @@ function saveNewTender(){
     questionsDeadline:'TBD',tourDate:'TBD',openDate:'TBD',
     tenderBond:'TBD',performanceBond:'TBD',liabilityBond:'TBD',insurance:'TBD',
     scope:document.getElementById('ntNotes').value,
-    thresholds:[],qualityScoring:[],teamReq:[],highlights:[],flags:[],
-    appExp:TENDERS[0].appExp,appTeam:TENDERS[0].appTeam
+    thresholds:[],qualityScoring:[],teamReq:[],highlights:[],flags:[]
   };
   TENDERS.push(nt);
+  saveTender(nt);
   closeModal('newTenderModal');
   renderTenderTable();renderTenderCards();renderDashboard();updateSimSelect();
   // If file attached, auto-run AI analysis

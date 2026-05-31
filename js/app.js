@@ -1,7 +1,19 @@
 'use strict';
 
 /* ═════ INIT ═════ */
-function initApp(){
+async function initApp(){
+  // Show loading state
+  const content = document.querySelector('.content');
+  if(content) content.style.opacity = '0.5';
+
+  try {
+    await loadAllData();
+  } catch(e) {
+    console.error('Data load error:', e);
+  }
+
+  if(content) content.style.opacity = '1';
+
   renderHome();
   renderDashboard();
   renderTenderTable();

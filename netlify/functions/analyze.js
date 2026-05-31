@@ -65,14 +65,14 @@ ${truncated ? '(הטקסט קוצר — נתח את מה שיש)' : ''}
 תוכן המכרז:
 ${text}
 
-חלץ ותחזיר אובייקט JSON בעברית עם כל השדות הבאים. אם שדה לא מצוין במכרז, השתמש ב-null.
+חלץ ותחזיר אובייקט JSON בעברית עם כל השדות הבאים. אם שדה לא מצוין במכרז, השתמש במחרוזת ריקה "" (לא null).
 
 {
   "tenderName": "שם המכרז המלא",
   "orgName": "שם הגוף המזמין",
   "tenderNumber": "מספר המכרז",
   "type": "סוג המכרז",
-  "submitDeadline": "תאריך ושעת הגשה אחרונה בפורמט DD/MM/YYYY בשעה HH:MM",
+  "submitDeadline": "תאריך ושעת הגשה אחרונה בפורמט DD/MM/YYYY בשעה HH:MM. אם אין שעה — רק DD/MM/YYYY בלי 'בשעה'",
   "daysLeft": 0,
   "value": "היקף כספי / אומדן",
   "duration": "תקופת התקשרות מלאה כולל הארכות",
@@ -82,7 +82,7 @@ ${text}
   "performanceBond": "ערבות ביצוע",
   "scope": "תיאור מפורט של היקף העבודה",
   "timeline": [
-    {"label": "שם האירוע", "date": "DD/MM/YYYY בשעה HH:MM"}
+    {"label": "שם האירוע", "date": "DD/MM/YYYY בשעה HH:MM (אם אין שעה — רק DD/MM/YYYY)"}
   ],
   "contact": {"name": "שם", "email": "מייל", "phone": "טלפון", "method": "אופן שליחת שאלות"},
   "adminThresholds": ["תנאי סף מנהלי 1", "תנאי סף מנהלי 2"],
@@ -110,7 +110,7 @@ ${text}
 - qualityScoring: כל מדד איכות עם l = שם, detail = פירוט מלא של מה נבדק (כולל חלוקת ניקוד פנימית אם יש), w = משקל באחוזים (כמחרוזת עם %).
 - minQualityScore: ציון איכות מזערי למעבר לשלב הבא. null אם לא צוין.
 - priceScoring: אם יש מרכיב מחיר עם חלוקה לקטגוריות, פרט. אחרת null.
-- timeline: כלול מועד שאלות הבהרה, מועד תחילת הגשה, מועד אחרון להגשה, ראיון — כל מה שמצוין. date בפורמט DD/MM/YYYY בשעה HH:MM.
+- timeline: כלול מועד שאלות הבהרה, מועד תחילת הגשה, מועד אחרון להגשה, ראיון — כל מה שמצוין. date בפורמט DD/MM/YYYY בשעה HH:MM. אם אין שעה ספציפית — רק DD/MM/YYYY ללא "בשעה".
 - contact: חפש כתובת דוא"ל, טלפון, מוקד תמיכה, או כל פרט קשר. אל תחזיר null אם יש כתובת מייל כלשהי במכרז.
 - highlights: 3-6 נקודות חשובות (דגשים מיוחדים) שכל מגיש חייב לדעת.
 - flags: 2-4 סיכונים או אזהרות.
@@ -184,6 +184,24 @@ ${text}
     if (!Array.isArray(result.highlights)) result.highlights = [];
     if (!Array.isArray(result.flags)) result.flags = [];
     if (!Array.isArray(result.timeline)) result.timeline = [];
+
+    // Clean nulls and empty "בשעה" from all string fields
+    function cleanVal(v) {
+      if (v === null || v === undefined) return '';
+      if (typeof v === 'string') return v.replace(/\s*בשעה\s*(null|)$/g, '').replace(/^null$/, '').trim();
+      return v;
+    }
+    for (const key of Object.keys(result)) {
+      if (typeof result[key] === 'string') result[key] = cleanVal(result[key]);
+    }
+    if (result.timeline) {
+      result.timeline.forEach(t => { if (t.date) t.date = cleanVal(t.date); });
+    }
+    if (result.contact) {
+      for (const key of Object.keys(result.contact)) {
+        result.contact[key] = cleanVal(result.contact[key]);
+      }
+    }
 
     return { statusCode: 200, headers, body: JSON.stringify(result) };
 

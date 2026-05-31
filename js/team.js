@@ -50,6 +50,7 @@ function saveTeamMember(){
     color:'#1a5c4a',ini:name.split(' ').slice(0,2).map(w=>w[0]).join(''),
     areas:selectedAreas,certs:document.getElementById('atCerts').value.split(',').map(s=>s.trim()).filter(Boolean)
   });
+  saveTeamMemberToStore(teamMembers[teamMembers.length - 1], teamMembers.length - 1);
   closeModal('addTeamModal');
   renderTeam();
 }

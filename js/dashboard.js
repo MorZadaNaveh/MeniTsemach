@@ -24,12 +24,12 @@ function renderDashboard(){
 
   // Stats
   const ds = document.getElementById('dashStats');
+  const urgentCount = TENDERS.filter(t=>t.status==='urgent').length;
   if(ds) ds.innerHTML = [
-    {l:'מכרזים פעילים',v:TENDERS.length,h:'1 דחוף במיוחד',i:'📄',a:'var(--grn2)',ab:'var(--grn-light)'},
-    {l:'אחוז זכייה',v:'68%',h:'12 חודשים',i:'🏆',a:'var(--navy)',ab:'var(--bg2)'},
-    {l:'שווי זכיות',v:'₪1.84M',h:'שנת 2024',i:'💰',a:'var(--gold)',ab:'var(--gl)'},
-    {l:'חברי צוות',v:teamMembers.length,h:'כולם זמינים',i:'👥',a:'var(--blu)',ab:'var(--bbg)'}
-  ].map(s=>`<div class="sc" style="--a:${s.a};--ab:${s.ab}"><div class="sc-i">${s.i}</div><div class="sc-v">${s.v}</div><div class="sc-l">${s.l}</div><div class="sc-h">${s.h}</div></div>`).join('');
+    {l:'מכרזים פעילים',v:TENDERS.length,h:urgentCount>0?urgentCount+' דחוף':'',i:'📄',a:'var(--grn2)',ab:'var(--grn-light)'},
+    {l:'מסמכי יסוד',v:vaultDocs.length,h:expired.length>0?expired.length+' פגו תוקף':'תקינים',i:'📋',a:'var(--navy)',ab:'var(--bg2)'},
+    {l:'חברי צוות',v:teamMembers.length,h:'',i:'👥',a:'var(--blu)',ab:'var(--bbg)'}
+  ].map(s=>`<div class="sc" style="--a:${s.a};--ab:${s.ab}"><div class="sc-i">${s.i}</div><div class="sc-v">${s.v}</div><div class="sc-l">${s.l}</div>${s.h?`<div class="sc-h">${s.h}</div>`:''}</div>`).join('');
 
   // Tender list
   const tl = document.getElementById('dashTenderList');
@@ -66,7 +66,7 @@ function renderDashboard(){
     const u3 = TENDERS.filter(t=>t.daysLeft<=5);
     u3.forEach(t=>reminders.push({t:`הגשת "${t.name}" — עוד ${t.daysLeft} ימים!`,c:'ar'}));
     warn30.forEach(d=>reminders.push({t:`${d.name} — פוגע תוך ${d.days} ימים`,c:'aa'}));
-    reminders.push({t:'סיור קבלנים נתניה — 20.03 | 09:00',c:'ab2'});
+    if(reminders.length===0) reminders.push({t:'אין תזכורות פעילות',c:'ag2'});
     dr.innerHTML = reminders.slice(0,4).map(r=>`<div class="alert ${r.c}" style="margin-bottom:5px;font-size:11.5px">🔔 ${r.t}</div>`).join('');
   }
 }

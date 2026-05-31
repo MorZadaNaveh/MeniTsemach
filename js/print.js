@@ -1,7 +1,7 @@
 'use strict';
 
 /* ═════ PRINT ═════ */
-function printDocument(docType, tidOrNull){
+function printDocument(docType, tidOrNull, extraArg){
   const t=(tidOrNull!==null&&tidOrNull!==undefined)?TENDERS[tidOrNull]:null;
   const today=new Date().toLocaleDateString('he-IL');
   const head=`<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8">
@@ -68,38 +68,6 @@ function printDocument(docType, tidOrNull){
     <tbody>${(t.qualityScoring||[]).map(q=>{const e=Math.round((q.m||0)*0.88);return`<tr><td style="font-weight:600">${q.l}</td><td>${q.w}%</td><td class="mono" style="font-weight:700">${q.m}</td><td class="mono" style="font-weight:700;color:#2d9b6f">${e}</td></tr>`;}).join('')}
     <tr style="background:#e8f5f0;font-weight:700"><td>סה"כ</td><td>100%</td><td class="mono">100</td><td class="mono" style="color:#1a5c4a">${sc}</td></tr>
     </tbody></table>`+ftr+foot;
-  } else if(docType==='appExp'&&t){
-    html=head+hdr(`נספח א' — ניסיון המשרד`,`${t.name} | ${t.org} | ${t.number}`)+
-    `<table><thead><tr><th>#</th><th>לקוח</th><th>שנים</th><th>תחום</th><th>היקף</th><th>שעות</th><th>איש קשר</th><th>נייד</th><th>מייל</th></tr></thead>
-    <tbody>${(t.appExp||[]).map((e,i)=>`<tr><td style="color:#2d9b6f;font-weight:700">${i+1}</td><td style="font-weight:700">${e.client}</td><td class="mono">${e.years}</td><td>${e.area}</td><td style="font-weight:700">${e.scope}</td><td class="mono">${e.hours}</td><td>${e.contact}</td><td class="mono" style="direction:ltr">${e.mobile}</td><td style="direction:ltr">${e.email}</td></tr>`).join('')}</tbody></table>
-    <div class="sign-row"><div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">${BIDDER.signatory}</div></div><div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">תאריך וחותמת</div></div></div>`+ftr+foot;
-  } else if(docType==='appTeam'&&t){
-    html=head+hdr(`נספח ב' — קורות חיים`,`${t.name} | ${t.org}`)+
-    (t.appTeam||[]).map(m=>`<h3 style="background:#e8f5f0;padding:5pt 8pt;border-radius:4pt;border-right:3pt solid #1a5c4a">${m.name} — ${m.role}</h3>
-    <table style="margin-bottom:10pt"><tbody>
-      <tr><td style="width:25%;font-weight:700;background:#e8f5f0">ת.ז.</td><td class="mono">${m.id}</td></tr>
-      <tr><td style="font-weight:700;background:#e8f5f0">שנות ניסיון</td><td class="mono" style="font-weight:700;color:#2d9b6f">${m.years} שנים</td></tr>
-      <tr><td style="font-weight:700;background:#e8f5f0">הסמכות</td><td>${m.certs}</td></tr>
-      <tr><td style="font-weight:700;background:#e8f5f0">תחומי ניסיון</td><td>${m.areas}</td></tr>
-    </tbody></table>`).join('')+ftr+foot;
-  } else if(docType==='appDecl'&&t){
-    html=head+hdr(`נספח ג' — הצהרות ותצהירים`,`${t.name} | ${t.number}`)+
-    `<h2>הצהרת המציע</h2>
-    <table><tbody>
-      <tr><td style="width:32%;font-weight:700;background:#e8f5f0">שם המציע</td><td>${BIDDER.name}</td></tr>
-      <tr><td style="font-weight:700;background:#e8f5f0">ח.פ</td><td class="mono">${BIDDER.vat}</td></tr>
-      <tr><td style="font-weight:700;background:#e8f5f0">כתובת</td><td>${BIDDER.address}</td></tr>
-      <tr><td style="font-weight:700;background:#e8f5f0">מורשי חתימה</td><td>${BIDDER.signatory}</td></tr>
-    </tbody></table>
-    <h2>הצהרת ניגוד עניינים</h2>
-    <p style="padding:8pt;background:#e8f5f0;border:0.5pt solid #a8d8c8;border-radius:5pt;font-size:10pt">אנו מצהירים כי אין ולא יהיה ניגוד עניינים עם ${t.org} בביצוע העבודה.</p>
-    <h2>אישור ניהול תקין</h2>
-    <table><tbody><tr><td style="font-weight:700;background:#e8f5f0">סטטוס</td><td>פעיל — תוקף עד 31.12.2025</td></tr><tr><td style="font-weight:700;background:#e8f5f0">מספר</td><td class="mono">NIT-2025-123456</td></tr></tbody></table>
-    <div class="sign-row">
-      <div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">${BIDDER.signatory}</div></div>
-      <div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">עד</div></div>
-      <div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">תאריך וחותמת</div></div>
-    </div>`+ftr+foot;
   } else if(docType==='fullPackage'&&t){
     html=head+hdr(`חבילת הגשה מלאה: ${t.name}`,`${t.org} | ${t.number} | ${today}`)+
     `<h2>פרטי המכרז</h2>
@@ -107,12 +75,8 @@ function printDocument(docType, tidOrNull){
       <div class="ai-box"><div class="ai-lbl">מועד הגשה</div><div class="ai-val" style="color:#c0392b;font-weight:700">${t.submitDeadline}</div></div>
       <div class="ai-box"><div class="ai-lbl">ערך</div><div class="ai-val">${t.value}</div></div>
     </div>
-    <h2>נספח א' — ניסיון</h2>
-    <table><thead><tr><th>לקוח</th><th>שנים</th><th>תחום</th><th>היקף</th><th>נייד</th></tr></thead>
-    <tbody>${(t.appExp||[]).map(e=>`<tr><td style="font-weight:700">${e.client}</td><td class="mono">${e.years}</td><td>${e.area}</td><td>${e.scope}</td><td class="mono" style="direction:ltr">${e.mobile}</td></tr>`).join('')}</tbody></table>
-    <h2>נספח ב' — צוות</h2>
-    <table><thead><tr><th>תפקיד</th><th>שם</th><th>ת.ז.</th><th>שנות ניסיון</th></tr></thead>
-    <tbody>${(t.appTeam||[]).map(m=>`<tr><td style="font-weight:700">${m.role}</td><td style="font-weight:700">${m.name}</td><td class="mono">${m.id}</td><td class="mono" style="color:#2d9b6f;font-weight:700">${m.years}</td></tr>`).join('')}</tbody></table>
+    ${(t.thresholds||[]).length?`<h2>תנאי סף</h2>${t.thresholds.map(th=>`<div class="ok-box">✅ ${th}</div>`).join('')}`:''}
+    ${(t.highlights||[]).length?`<h2>דגשים</h2>${t.highlights.map(h=>`<div style="padding:5pt 8pt;margin-bottom:4pt;background:#eff6ff;border:0.5pt solid #93c5fd;border-radius:5pt;font-size:9.5pt">ℹ️ ${h}</div>`).join('')}`:''}
     <div class="sign-row"><div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">${BIDDER.signatory}</div></div><div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">תאריך וחותמת</div></div></div>`+ftr+foot;
   } else if(docType==='analysis'){
     const r=currentAIResult||{};
@@ -127,15 +91,15 @@ function printDocument(docType, tidOrNull){
     `+ftr+foot;
   } else if(docType==='simulator'){
     const val=document.getElementById('simSelect').value;
-    const t2=TENDERS[+val]||TENDERS[0];
-    html=head+hdr(`דוח סימולטור: ${t2.name}`,t2.org)+
-    `<h2>ניקוד משוער</h2>
-    <table><thead><tr><th>קריטריון</th><th>משקל</th><th>ניקוד משוער</th></tr></thead>
-    <tbody>${(t2.qualityScoring||[]).map(q=>{const e=Math.round((q.m||0)*0.88);return`<tr><td>${q.l}</td><td>${q.w}%</td><td class="mono" style="font-weight:700;color:#2d9b6f">${e}</td></tr>`;}).join('')}</tbody></table>
-    <h2>צוות מומלץ</h2>
-    <table><thead><tr><th>תפקיד</th><th>שם</th><th>שנות ניסיון</th></tr></thead>
-    <tbody>${(t2.appTeam||[]).map((m,i)=>{const tm=teamMembers[i%teamMembers.length];return`<tr><td style="font-weight:700">${m.role}</td><td>${tm.name}</td><td class="mono">${tm.years}</td></tr>`;}).join('')}</tbody></table>
-    `+ftr+foot;
+    const t2=TENDERS[+val];
+    if(!t2){ html=head+hdr('דוח סימולטור','')+'<p>לא נבחר מכרז</p>'+ftr+foot; }
+    else {
+      html=head+hdr(`דוח סימולטור: ${t2.name}`,t2.org)+
+      `<h2>ניקוד משוער</h2>
+      <table><thead><tr><th>קריטריון</th><th>משקל</th><th>ניקוד משוער</th></tr></thead>
+      <tbody>${(t2.qualityScoring||[]).map(q=>{const e=Math.round((q.m||0)*0.88);return`<tr><td>${q.l}</td><td>${q.w}%</td><td class="mono" style="font-weight:700;color:#2d9b6f">${e}</td></tr>`;}).join('')}</tbody></table>
+      ${(t2.teamReq||[]).length?`<h2>דרישות צוות</h2><table><thead><tr><th>תפקיד</th><th>דרישות</th></tr></thead><tbody>${t2.teamReq.map(r=>`<tr><td style="font-weight:700">${r.role}</td><td>${r.req}</td></tr>`).join('')}</tbody></table>`:''}`+ftr+foot;
+    }
   } else if(docType==='bidder'){
     html=head+hdr('פרופיל המשרד','')+
     `<table><tbody>
@@ -146,6 +110,39 @@ function printDocument(docType, tidOrNull){
       <tr><td style="font-weight:700;background:#e8f5f0">ח.פ</td><td class="mono">${BIDDER.vat}</td></tr>
       <tr><td style="font-weight:700;background:#e8f5f0">מורשה חתימה</td><td>${BIDDER.signatory}</td></tr>
     </tbody></table>`+ftr+foot;
+  } else if(docType==='dynApp'){
+    // Dynamic appendix print — tidOrNull = tenderId, 3rd arg = appIdx
+    const appIdx = extraArg || 0;
+    const apps = currentAIResult?.appendices || tmDynApps || [];
+    const app = apps[appIdx];
+    if(app){
+      const tender = t || (currentAIResult ? { name: currentAIResult.tenderName, org: currentAIResult.orgName, number: currentAIResult.tenderNumber } : { name:'', org:'', number:'' });
+      html = head + hdr(app.title, `${tender.name} | ${tender.org} | ${tender.number}`);
+
+      if(app.isTable && app.fields && app.fields.length > 0){
+        html += `<table><thead><tr>${app.fields.map(f=>`<th>${f.label}</th>`).join('')}</tr></thead>
+        <tbody>${(app.rows||[]).map(row => `<tr>${app.fields.map(f => {
+          const val = row[f.key] !== undefined ? row[f.key] : '';
+          const dirStyle = /^[a-zA-Z0-9@+]/.test(val+'') ? 'direction:ltr;' : '';
+          return `<td style="${dirStyle}">${val}</td>`;
+        }).join('')}</tr>`).join('')}</tbody></table>`;
+      } else {
+        const row = (app.rows && app.rows[0]) || {};
+        html += '<table><tbody>';
+        (app.fields||[]).forEach(f => {
+          const val = row[f.key] !== undefined ? row[f.key] : '';
+          html += `<tr><td style="width:32%;font-weight:700;background:#e8f5f0">${f.label}</td><td>${val}</td></tr>`;
+        });
+        html += '</tbody></table>';
+      }
+
+      html += `<div class="sign-row">
+        <div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">${BIDDER.signatory}</div></div>
+        <div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">תאריך וחותמת</div></div>
+      </div>` + ftr + foot;
+    } else {
+      html = head + hdr('נספח','') + '<p>לא נמצא נספח</p>' + ftr + foot;
+    }
   } else {
     html=head+hdr('מסמך מזכיר',today)+'<p>נוצר אוטומטית</p>'+ftr+foot;
   }

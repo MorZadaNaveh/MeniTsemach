@@ -34,7 +34,7 @@ function renderVault(){
 
 function replaceDoc(id){
   const inp=document.createElement('input');inp.type='file';inp.accept='.pdf,.doc,.docx';
-  inp.onchange=()=>{const d=vaultDocs.find(d=>d.id===id);if(d&&inp.files[0]){d.file=inp.files[0].name;renderVault();}};
+  inp.onchange=()=>{const d=vaultDocs.find(d=>d.id===id);if(d&&inp.files[0]){d.file=inp.files[0].name;saveVaultDoc(d);renderVault();}};
   inp.click();
 }
 
@@ -45,6 +45,7 @@ function editDocExpiry(id){
   if(nd&&/^\d{4}-\d{2}-\d{2}$/.test(nd)){
     d.expiry=nd;
     d.days=Math.round((new Date(nd)-new Date('2025-03-02'))/86400000);
+    saveVaultDoc(d);
     renderVault();renderDashboard();
   }
 }
@@ -62,6 +63,7 @@ function saveNewDoc(){
     required:document.getElementById('newDocReq').value==='1',
     file:name.replace(/\s/g,'_').toLowerCase()+'.pdf'
   });
+  saveVaultDoc(vaultDocs[vaultDocs.length - 1]);
   closeModal('addDocModal');
   document.getElementById('newDocName').value='';
   renderVault();renderDashboard();

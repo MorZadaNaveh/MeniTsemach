@@ -10,8 +10,9 @@ function renderHome(){
   if(greetEl){
     const now = new Date();
     const dateStr = now.toLocaleDateString('he-IL',{weekday:'long', year:'numeric', month:'long', day:'numeric'});
+    const userName = BIDDER.signatory || BIDDER.name || '';
     greetEl.innerHTML = `
-      <h1>שלום, רון פישמן 👋</h1>
+      <h1>שלום${userName ? ', '+userName : ''}</h1>
       <div class="home-date">${dateStr}</div>
     `;
   }
@@ -21,9 +22,8 @@ function renderHome(){
   const stats = [
     {label:'לקוחות',value:uniqueOrgs.length,hint:'גופים מזמינים',icon:'👤',cls:'navy'},
     {label:'מכרזים',value:TENDERS.length,hint:TENDERS.filter(t=>t.status==='urgent').length+' בהגשה קרובה',icon:'📄',cls:'teal'},
-    {label:'הודעות',value:1,hint:'הודעה חדשה',icon:'✉️',cls:'green'},
+    {label:'מסמכי יסוד',value:vaultDocs.length,hint:'תיקיית המציע',icon:'📋',cls:'green'},
     {label:'צוות עובדים',value:teamMembers.length,hint:'משתמשים פעילים',icon:'⚙️',cls:'gold'},
-    {label:'הצעות',value:vaultDocs.length,hint:'מסמכי הגשה',icon:'❄️',cls:'brown'}
   ];
 
   // Action cards (same design, second row)
@@ -57,13 +57,15 @@ function renderHome(){
   // Recent activity
   const actEl = document.getElementById('homeActivity');
   if(actEl){
-    const activities = [
-      {color:'var(--red)',text:'עיריית פתח תקווה — הגשה ב-3 ימים',meta:'מכרז דחוף'},
-      {color:'var(--grn2)',text:'מועצה אזורית חוף הכרמל — נוספה לרשימה',meta:'מכרז חדש'},
-      {color:'var(--blu)',text:'עיריית נתניה — סיור מציעים 20.03',meta:'תזכורת'},
-      {color:'var(--amb)',text:'ניכוי במקור — פג תוקף בעוד 44 יום',meta:'מסמך'},
-      {color:'var(--grn)',text:'דניאל ברק — הוגדר ככלכלן ראשי',meta:'צוות'}
-    ];
+    const activities = [];
+    TENDERS.filter(t=>t.daysLeft<=7).forEach(t=>{
+      activities.push({color:'var(--red)',text:`${t.name} — הגשה בעוד ${t.daysLeft} ימים`,meta:'מכרז דחוף'});
+    });
+    const expiredDocs = vaultDocs.filter(d=>d.expiry&&d.days<0);
+    const soonDocs = vaultDocs.filter(d=>d.expiry&&d.days>=0&&d.days<=30);
+    expiredDocs.forEach(d=>activities.push({color:'var(--red)',text:`${d.name} — פג תוקף!`,meta:'מסמך'}));
+    soonDocs.forEach(d=>activities.push({color:'var(--amb)',text:`${d.name} — פוגע תוך ${d.days} ימים`,meta:'מסמך'}));
+    if(activities.length===0) activities.push({color:'var(--grn)',text:'אין עדכונים חדשים',meta:''});
     actEl.innerHTML = activities.map(a=>`
       <div class="home-act-row">
         <div class="home-act-dot" style="background:${a.color}"></div>

@@ -47,7 +47,7 @@ async function extractFileText(file){
   // TXT / CSV
   if(file.type.includes('text') || name.endsWith('.txt') || name.endsWith('.csv')){
     const text = await file.text();
-    return smartTruncate(text);
+    return { fullText: text, ...smartTruncate(text) };
   }
 
   // PDF — extract ALL pages first, then truncate smartly
@@ -62,7 +62,8 @@ async function extractFileText(file){
       const pageText = tc.items.map(it=>it.str).join(' ');
       fullText += pageText + '\n';
     }
-    return smartTruncate(fullText);
+    const truncated = smartTruncate(fullText);
+    return { fullText, ...truncated };
   }
 
   // DOCX
@@ -70,7 +71,8 @@ async function extractFileText(file){
     if(typeof mammoth==='undefined') throw new Error('Mammoth.js לא נטען — רענן את הדף');
     const buf = await file.arrayBuffer();
     const result = await mammoth.extractRawText({arrayBuffer: buf});
-    return smartTruncate(result.value);
+    const truncated = smartTruncate(result.value);
+    return { fullText: result.value, ...truncated };
   }
 
   // Unsupported
@@ -106,6 +108,38 @@ async function callAIForAnalysis(content, fileName, wasTruncated){
   }
 }
 
+/* ── Call Netlify Function → Appendix extraction ── */
+async function callAIForAppendices(content, fileName){
+  const companyData = {
+    bidder: BIDDER,
+    team: teamMembers
+  };
+
+  const MAX_RETRIES = 3;
+  const RETRY_DELAYS = [3000, 6000, 10000];
+
+  for(let attempt = 0; attempt < MAX_RETRIES; attempt++){
+    const response = await fetch('/.netlify/functions/extract-appendices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: content, fileName, companyData })
+    });
+
+    if(response.ok) return await response.json();
+
+    const err = await response.json().catch(()=>({error:'Unknown'}));
+    const retryable = response.status === 429 || response.status === 503;
+
+    if(retryable && attempt < MAX_RETRIES - 1){
+      console.log(`Appendix retry ${attempt+1}/${MAX_RETRIES} after ${response.status}`);
+      await new Promise(r=>setTimeout(r, RETRY_DELAYS[attempt]));
+      continue;
+    }
+
+    throw new Error(err.error || 'Appendix API error: ' + response.status);
+  }
+}
+
 /* ── Main analysis flow ── */
 async function runAIAnalysis(){
   if(!uploadedFiles.length){ alert('נא לבחור קובץ'); return; }
@@ -122,28 +156,48 @@ async function runAIAnalysis(){
     // Step 1: Extract text
     progText.textContent = 'קורא את הקובץ...';
     progBar.style.width = '15%';
-    const { text, truncated } = await extractFileText(file);
+    const { fullText, text, truncated } = await extractFileText(file);
     uploadedFileContent = text;
 
     if(text.trim().length < 50){
       throw new Error('לא הצלחתי לחלץ טקסט מהקובץ — ייתכן שהקובץ סרוק (תמונה) או ריק');
     }
 
-    // Step 2: Send to AI
+    // Step 2: Send to AI — both calls in parallel
     progText.textContent = 'שולח ל-AI לניתוח...';
     progBar.style.width = '35%';
 
     // Animate progress while waiting
     let pct = 35;
     const iv = setInterval(()=>{
-      if(pct < 90){ pct += 3; progBar.style.width = pct+'%'; }
-      if(pct > 50 && pct < 60) progText.textContent = 'AI מחלץ תנאי סף וניקוד...';
-      if(pct > 65 && pct < 75) progText.textContent = 'מזהה מועדים ופרטי קשר...';
-      if(pct > 80) progText.textContent = 'מסמן חריגות ודגשים...';
+      if(pct < 90){ pct += 2; progBar.style.width = pct+'%'; }
+      if(pct > 45 && pct < 55) progText.textContent = 'AI מחלץ תנאי סף וניקוד...';
+      if(pct > 55 && pct < 65) progText.textContent = 'מזהה נספחים וטפסים...';
+      if(pct > 65 && pct < 75) progText.textContent = 'ממלא נספחים אוטומטית...';
+      if(pct > 75 && pct < 85) progText.textContent = 'מזהה מועדים ופרטי קשר...';
+      if(pct > 85) progText.textContent = 'מסמן חריגות ודגשים...';
     }, 500);
 
-    const result = await callAIForAnalysis(text, file.name, truncated);
+    // Run analysis + appendix extraction in parallel
+    const [analysisResult, appendicesResult] = await Promise.allSettled([
+      callAIForAnalysis(text, file.name, truncated),
+      callAIForAppendices(fullText, file.name)
+    ]);
+
     clearInterval(iv);
+
+    if(analysisResult.status === 'rejected'){
+      throw analysisResult.reason;
+    }
+
+    const result = analysisResult.value;
+    // Attach appendices (may have failed independently)
+    if(appendicesResult.status === 'fulfilled' && appendicesResult.value?.appendices){
+      result.appendices = appendicesResult.value.appendices;
+    } else {
+      console.warn('Appendix extraction failed:', appendicesResult.reason || 'No data');
+      result.appendices = [];
+    }
 
     progText.textContent = 'מכין תוצאות...';
     progBar.style.width = '100%';
@@ -151,6 +205,11 @@ async function runAIAnalysis(){
     await new Promise(r=>setTimeout(r, 300));
     currentAIResult = result;
     showAIResult(result);
+
+    // Persist appendices after tender is created (always overwrite, even if empty)
+    if(currentAnalysisIdx >= 0){
+      saveAppendices(currentAnalysisIdx, result.appendices);
+    }
 
   } catch(err) {
     console.error('Analysis error:', err);
@@ -190,10 +249,16 @@ function showAIResult(result){
       scope:result.scope||'',
       highlights:result.highlights||[],
       flags:result.flags||[],
-      appExp:TENDERS[0].appExp,
-      appTeam:TENDERS[0].appTeam
+      thresholds:result.thresholds||[],
+      qualityScoring:result.qualityScoring||[],
+      teamReq:result.teamReq||[],
+      insurance:result.insurance||'',
+      liabilityBond:result.liabilityBond||'',
+      tourDate:result.tourDate||'',
+      openDate:result.openDate||''
     };
     TENDERS.push(newTender);
+    saveTender(newTender);
     currentAnalysisIdx = newTender.id;
     updateSimSelect();
     renderTenderTable();
@@ -320,39 +385,154 @@ function switchAITab(tab, el){
       : `${minScoreHtml}${noteHtml}${qualityHtml}${priceHtml}`;
   }
   else if(tab==='docs'){
-    body.innerHTML=`
-      <div class="alert ag2" style="margin-bottom:12px">✨ AI ייצר את הנספחים לפי המידע שחולץ</div>
-      <div class="atabs" id="aiAppTabsRow">
-        ${[['exp',"נספח א' — ניסיון"],['team',"נספח ב' — צוות"],['decl',"נספח ג' — הצהרות"]].map(([v,l])=>
-          `<div class="atab ${v==='exp'?'on':''}" onclick="switchAIAppTab('${v}')">${l}</div>`
+    const apps = r.appendices || [];
+    if(!apps.length){
+      body.innerHTML = '<div class="alert ab2" style="font-size:12px">לא זוהו נספחים למילוי במסמך זה.</div>';
+      return;
+    }
+
+    // Dynamic appendix tabs from AI extraction
+    body.innerHTML = `
+      <div class="alert ag2" style="margin-bottom:12px">✨ AI זיהה ${apps.length} נספחים וביצע מילוי אוטומטי מנתוני המשרד</div>
+      <div class="atabs" id="aiAppTabsRow" style="flex-wrap:wrap;gap:4px">
+        ${apps.map((app, i) =>
+          `<div class="atab ${i===0?'on':''}" onclick="switchDynAppTab(${i})">${app.title}</div>`
         ).join('')}
       </div>
       <div id="aiAppContent"></div>`;
-    renderAIAppContent('exp', r);
+    renderDynAppContent(0);
   }
 }
 
-let aiAppTab = 'exp';
-function switchAIAppTab(tab){
-  aiAppTab = tab;
-  document.querySelectorAll('#aiAppTabsRow .atab').forEach((el,i)=>{
-    el.className='atab'+(['exp','team','decl'][i]===tab?' on':'');
+/* ═════ DYNAMIC APPENDIX RENDERING ═════ */
+let currentDynAppIdx = 0;
+
+function switchDynAppTab(idx){
+  currentDynAppIdx = idx;
+  document.querySelectorAll('#aiAppTabsRow .atab').forEach((el, i) => {
+    el.className = 'atab' + (i === idx ? ' on' : '');
   });
-  renderAIAppContent(tab, currentAIResult);
+  renderDynAppContent(idx);
 }
 
-function renderAIAppContent(tab, r){
+function renderDynAppContent(idx){
   const ac = document.getElementById('aiAppContent');
   if(!ac) return;
-  const mockT = {
-    name: r.tenderName||uploadedFileName,
-    org: r.orgName||'',
-    number: r.tenderNumber||'',
-    appExp: TENDERS[0].appExp,
-    appTeam: TENDERS[0].appTeam
-  };
-  if(tab==='exp') ac.innerHTML = buildAppExp(mockT);
-  else if(tab==='team') ac.innerHTML = buildAppTeam(mockT);
-  else if(tab==='decl') ac.innerHTML = buildAppDecl(mockT);
+  const apps = currentAIResult?.appendices || [];
+  const app = apps[idx];
+  if(!app){ ac.innerHTML = ''; return; }
+  ac.innerHTML = buildDynAppHtml(app, idx, currentAnalysisIdx);
 }
 
+function buildDynAppHtml(app, idx, tenderId){
+  const tenderName = currentAIResult?.tenderName || '';
+  const tenderOrg = currentAIResult?.orgName || '';
+  const tenderNumber = currentAIResult?.tenderNumber || '';
+
+  const headerHtml = `
+    <div class="adoc">
+      <div class="adoch">
+        <div class="seal">נספח<br>${app.hebrewLabel || ''}</div>
+        <div style="flex:1">
+          <div class="adocht">${app.title}</div>
+          <div class="adochs">${tenderName} | ${tenderOrg} | ${tenderNumber}</div>
+        </div>
+        <button class="btn bo sm" style="background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.3);color:#fff"
+          onclick="printDocument('dynApp',${tenderId},${idx})">
+          <svg width="11" height="11"><use href="#ic-print"/></svg> הדפס
+        </button>
+      </div>
+      <div style="height:3px;background:linear-gradient(90deg,rgba(255,255,255,.3),rgba(255,255,255,.1))"></div>
+      <div style="padding:12px 16px">
+        <div style="margin-bottom:9px">
+          <div style="font-weight:800;font-size:13px;color:var(--navy)">${BIDDER.name}${BIDDER.subtitle?' — '+BIDDER.subtitle:''}</div>
+          <div style="font-size:10.5px;color:var(--s2)">${BIDDER.address} | ${BIDDER.phone} | ${BIDDER.email}</div>
+        </div>
+        ${app.description ? `<div style="font-size:11.5px;color:var(--s2);margin-bottom:9px;padding:6px 9px;background:var(--bg2);border-radius:6px">${app.description}</div>` : ''}
+        ${app.autoFillNotes ? `<div class="alert ag2" style="margin-bottom:9px;font-size:11px">🤖 ${app.autoFillNotes}</div>` : ''}`;
+
+  let contentHtml = '';
+
+  if(app.isTable && app.fields && app.fields.length > 0){
+    // Table-style appendix
+    contentHtml = `
+        <div style="overflow-x:auto">
+          <table class="atable" id="appTable_${idx}">
+            <thead><tr>${app.fields.map(f => `<th>${f.label}</th>`).join('')}<th style="width:30px"></th></tr></thead>
+            <tbody>
+              ${(app.rows||[]).map((row, ri) => `
+                <tr>${app.fields.map(f => {
+                  const val = row[f.key] !== undefined ? row[f.key] : '';
+                  const dirStyle = (f.type === 'text' && /^[a-zA-Z0-9@+]/.test(val+'')) ? 'direction:ltr;' : '';
+                  return `<td contenteditable="true" data-app="${idx}" data-row="${ri}" data-field="${f.key}"
+                    onblur="updateAppField(${idx},${ri},'${f.key}',this.textContent)"
+                    style="font-size:11.5px;min-width:60px;${dirStyle}">${val}</td>`;
+                }).join('')}
+                <td><span class="badge bgg" style="font-size:8px;cursor:default" title="ממולא אוטומטית">AI</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+  } else {
+    // Form-style appendix
+    const row = (app.rows && app.rows[0]) || {};
+    contentHtml = (app.fields||[]).map(f => {
+      const val = row[f.key] !== undefined ? row[f.key] : '';
+      if(f.type === 'textarea'){
+        return `<div style="margin-bottom:8px">
+          <div style="font-weight:700;font-size:10px;color:var(--s3);margin-bottom:3px">${f.label}</div>
+          <textarea class="fi" style="min-height:60px" data-app="${idx}" data-field="${f.key}"
+            onblur="updateAppField(${idx},0,'${f.key}',this.value)">${val}</textarea>
+        </div>`;
+      }
+      if(f.type === 'boolean'){
+        return `<div style="margin-bottom:8px">
+          <div style="font-weight:700;font-size:10px;color:var(--s3);margin-bottom:3px">${f.label}</div>
+          <select class="fs" data-app="${idx}" data-field="${f.key}"
+            onchange="updateAppField(${idx},0,'${f.key}',this.value)">
+            <option value="false" ${!val || val==='false' ? 'selected' : ''}>לא</option>
+            <option value="true" ${val && val!=='false' ? 'selected' : ''}>כן</option>
+          </select>
+        </div>`;
+      }
+      if(f.type === 'signature'){
+        return `<div style="margin-bottom:8px">
+          <div style="font-weight:700;font-size:10px;color:var(--s3);margin-bottom:3px">${f.label}</div>
+          <div style="width:150px;height:50px;border:1.5px dashed var(--grn-border);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--s3)">חתימה</div>
+        </div>`;
+      }
+      // Default: text/number/date input
+      const dirStyle = (f.type === 'text' && /^[a-zA-Z0-9@+]/.test(val+'')) ? 'direction:ltr;' : '';
+      return `<div style="margin-bottom:8px">
+        <div style="font-weight:700;font-size:10px;color:var(--s3);margin-bottom:3px">${f.label}</div>
+        <input class="fi" type="${f.type==='date'?'date':f.type==='number'?'number':'text'}"
+          value="${val}" style="${dirStyle}"
+          data-app="${idx}" data-field="${f.key}"
+          onblur="updateAppField(${idx},0,'${f.key}',this.value)">
+      </div>`;
+    }).join('');
+  }
+
+  const footerHtml = `
+        <div class="wm">מזכיר Tender Intelligence | נוצר ${new Date().toLocaleDateString('he-IL')} | סודי</div>
+      </div>
+    </div>`;
+
+  return headerHtml + contentHtml + footerHtml;
+}
+
+function updateAppField(appIdx, rowIdx, fieldKey, value){
+  const apps = currentAIResult?.appendices;
+  if(!apps || !apps[appIdx]) return;
+  if(!apps[appIdx].rows) apps[appIdx].rows = [];
+  if(!apps[appIdx].rows[rowIdx]) apps[appIdx].rows[rowIdx] = {};
+  apps[appIdx].rows[rowIdx][fieldKey] = value;
+  apps[appIdx].userEdited = true;
+  apps[appIdx].lastModified = new Date().toISOString();
+
+  // Persist
+  if(currentAnalysisIdx >= 0){
+    saveAppendices(currentAnalysisIdx, apps);
+  }
+}
