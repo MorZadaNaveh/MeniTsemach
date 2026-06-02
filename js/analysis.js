@@ -434,7 +434,8 @@ function showAIResult(result){
     insurance:result.insurance||'',
     liabilityBond:result.liabilityBond||'',
     tourDate:result.tourDate||'',
-    openDate:result.openDate||''
+    openDate:result.openDate||'',
+    appendices: Array.isArray(result.appendices) ? result.appendices : []
   };
 
   if(!existing){
@@ -610,6 +611,8 @@ function switchAITab(tab, el){
 
 /* ═════ DYNAMIC APPENDIX RENDERING ═════ */
 let currentDynAppIdx = 0;
+let signatureModalState = { appIdx: -1, rowIdx: 0, fieldKey: '' };
+let signaturePadState = { drawing: false, hasInk: false, initialized: false };
 
 function switchDynAppTab(idx){
   currentDynAppIdx = idx;
@@ -617,6 +620,213 @@ function switchDynAppTab(idx){
     el.className = 'atab' + (i === idx ? ' on' : '');
   });
   renderDynAppContent(idx);
+}
+
+function isSignatureField(field){
+  const type = String(field?.type || '').toLowerCase();
+  const label = String(field?.label || '').toLowerCase();
+  const key = String(field?.key || '').toLowerCase();
+  return type === 'signature' || label.includes('חתימ') || key.includes('sign');
+}
+
+function isSignatureDataUrl(val){
+  return typeof val === 'string' && /^data:image\/(png|jpeg|jpg);base64,/i.test(val.trim());
+}
+
+function ensureSignatureCanvasSize(){
+  const canvas = document.getElementById('signatureCanvas');
+  if(!canvas) return;
+  const ratio = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(320, Math.floor(rect.width || 500));
+  const h = Math.max(180, Math.floor(rect.height || 220));
+  if (canvas.width === w * ratio && canvas.height === h * ratio) return;
+  const prev = canvas.toDataURL('image/png');
+  canvas.width = w * ratio;
+  canvas.height = h * ratio;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#12302a';
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, w, h);
+  if (prev && prev.length > 30) {
+    const img = new Image();
+    img.onload = () => ctx.drawImage(img, 0, 0, w, h);
+    img.src = prev;
+  }
+}
+
+function getCanvasPoint(ev, canvas){
+  const rect = canvas.getBoundingClientRect();
+  const src = ev.touches?.[0] || ev.changedTouches?.[0] || ev;
+  return {
+    x: src.clientX - rect.left,
+    y: src.clientY - rect.top
+  };
+}
+
+function initSignatureModalCanvas(){
+  if(signaturePadState.initialized) return;
+  const canvas = document.getElementById('signatureCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+
+  const start = (ev) => {
+    ev.preventDefault();
+    ensureSignatureCanvasSize();
+    const p = getCanvasPoint(ev, canvas);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    signaturePadState.drawing = true;
+  };
+  const move = (ev) => {
+    if(!signaturePadState.drawing) return;
+    ev.preventDefault();
+    const p = getCanvasPoint(ev, canvas);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    signaturePadState.hasInk = true;
+  };
+  const end = (ev) => {
+    if(!signaturePadState.drawing) return;
+    ev.preventDefault();
+    signaturePadState.drawing = false;
+  };
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, { passive: false });
+  canvas.addEventListener('touchmove', move, { passive: false });
+  canvas.addEventListener('touchend', end, { passive: false });
+  window.addEventListener('resize', () => {
+    const modal = document.getElementById('signatureModal');
+    if(modal?.classList.contains('on')) ensureSignatureCanvasSize();
+  });
+
+  signaturePadState.initialized = true;
+}
+
+function setSignatureError(msg){
+  const err = document.getElementById('signatureError');
+  if(!err) return;
+  if(!msg){
+    err.style.display = 'none';
+    err.textContent = '';
+    return;
+  }
+  err.style.display = 'block';
+  err.textContent = msg;
+}
+
+function drawSignatureDataUrl(dataUrl){
+  const canvas = document.getElementById('signatureCanvas');
+  if(!canvas) return;
+  ensureSignatureCanvasSize();
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  img.onload = () => {
+    const w = canvas.width / (window.devicePixelRatio || 1);
+    const h = canvas.height / (window.devicePixelRatio || 1);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    const fit = Math.min(w / img.width, h / img.height);
+    const iw = img.width * fit;
+    const ih = img.height * fit;
+    const x = (w - iw) / 2;
+    const y = (h - ih) / 2;
+    ctx.drawImage(img, x, y, iw, ih);
+    signaturePadState.hasInk = true;
+  };
+  img.src = dataUrl;
+}
+
+function openSignatureModal(appIdx, rowIdx, fieldKey){
+  signatureModalState = { appIdx, rowIdx, fieldKey };
+  initSignatureModalCanvas();
+  const modal = document.getElementById('signatureModal');
+  if(!modal) return;
+  setSignatureError('');
+  ensureSignatureCanvasSize();
+  clearSignatureCanvas();
+
+  const row = currentAIResult?.appendices?.[appIdx]?.rows?.[rowIdx] || {};
+  const existing = row.__signature || row[fieldKey];
+  if(isSignatureDataUrl(existing)) drawSignatureDataUrl(existing);
+
+  const fileInput = document.getElementById('signatureFileInput');
+  if(fileInput) fileInput.value = '';
+  modal.classList.add('on');
+}
+
+function closeSignatureModal(){
+  document.getElementById('signatureModal')?.classList.remove('on');
+  setSignatureError('');
+}
+
+function clearSignatureCanvas(){
+  const canvas = document.getElementById('signatureCanvas');
+  if(!canvas) return;
+  ensureSignatureCanvasSize();
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width / (window.devicePixelRatio || 1);
+  const h = canvas.height / (window.devicePixelRatio || 1);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, w, h);
+  signaturePadState.hasInk = false;
+}
+
+function uploadSignatureFromFile(e){
+  const file = e?.target?.files?.[0];
+  if(!file) return;
+  if(!/^image\/(png|jpeg|jpg)$/i.test(file.type)){
+    setSignatureError('ניתן להעלות רק קובץ PNG/JPG.');
+    return;
+  }
+  if(file.size > 2 * 1024 * 1024){
+    setSignatureError('הקובץ גדול מדי. המגבלה היא 2MB.');
+    return;
+  }
+  setSignatureError('');
+  const reader = new FileReader();
+  reader.onload = () => drawSignatureDataUrl(String(reader.result || ''));
+  reader.readAsDataURL(file);
+}
+
+function saveSignatureFromModal(){
+  const canvas = document.getElementById('signatureCanvas');
+  if(!canvas) return;
+  if(!signaturePadState.hasInk){
+    setSignatureError('לא זוהתה חתימה. צייר/י חתימה או העלה/י תמונה.');
+    return;
+  }
+  const dataUrl = canvas.toDataURL('image/png');
+  const { appIdx, rowIdx, fieldKey } = signatureModalState;
+  // Keep one shared signature value per appendix row and reuse it for all signature fields.
+  updateAppField(appIdx, rowIdx, '__signature', dataUrl);
+  if (fieldKey) updateAppField(appIdx, rowIdx, fieldKey, dataUrl);
+  renderDynAppContent(currentDynAppIdx);
+  if(typeof renderTmDynApp === 'function' && document.getElementById('tmAppContent')){
+    renderTmDynApp(currentDynAppIdx);
+  }
+  closeSignatureModal();
+}
+
+function buildSignaturePreview(appIdx, rowIdx, fieldKey, val){
+  const keyArg = JSON.stringify(String(fieldKey || ''));
+  const row = currentAIResult?.appendices?.[appIdx]?.rows?.[rowIdx] || {};
+  const sharedVal = row.__signature || val;
+  if(isSignatureDataUrl(sharedVal)){
+    return `<button type="button" class="sign-preview" onclick='openSignatureModal(${appIdx},${rowIdx},${keyArg})'>
+      <img src="${sharedVal}" alt="חתימה">
+    </button>`;
+  }
+  return `<button type="button" class="sign-preview" onclick='openSignatureModal(${appIdx},${rowIdx},${keyArg})'>
+    <span class="sign-placeholder">לחץ להוספת חתימה</span>
+  </button>`;
 }
 
 function renderDynAppContent(idx){
@@ -656,16 +866,18 @@ function buildDynAppHtml(app, idx, tenderId){
         ${app.autoFillNotes ? `<div class="alert ag2" style="margin-bottom:9px;font-size:11px">🤖 ${app.autoFillNotes}</div>` : ''}`;
 
   let contentHtml = '';
+  const hasSignatureField = (app.fields || []).some(isSignatureField);
 
   if(app.isTable && app.fields && app.fields.length > 0){
+    const displayFields = app.fields.filter(f => !isSignatureField(f));
     // Table-style appendix
     contentHtml = `
         <div style="overflow-x:auto">
           <table class="atable" id="appTable_${idx}">
-            <thead><tr>${app.fields.map(f => `<th>${f.label}</th>`).join('')}<th style="width:30px"></th></tr></thead>
+            <thead><tr>${displayFields.map(f => `<th>${f.label}</th>`).join('')}<th style="width:30px"></th></tr></thead>
             <tbody>
               ${(app.rows||[]).map((row, ri) => `
-                <tr>${app.fields.map(f => {
+                <tr>${displayFields.map(f => {
                   const val = row[f.key] !== undefined ? row[f.key] : '';
                   const dirStyle = (f.type === 'text' && /^[a-zA-Z0-9@+]/.test(val+'')) ? 'direction:ltr;' : '';
                   return `<td contenteditable="true" data-app="${idx}" data-row="${ri}" data-field="${f.key}"
@@ -700,12 +912,7 @@ function buildDynAppHtml(app, idx, tenderId){
           </select>
         </div>`;
       }
-      if(f.type === 'signature'){
-        return `<div style="margin-bottom:8px">
-          <div style="font-weight:700;font-size:10px;color:var(--s3);margin-bottom:3px">${f.label}</div>
-          <div style="width:150px;height:50px;border:1.5px dashed var(--grn-border);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--s3)">חתימה</div>
-        </div>`;
-      }
+      if(isSignatureField(f)) return '';
       // Default: text/number/date input
       const dirStyle = (f.type === 'text' && /^[a-zA-Z0-9@+]/.test(val+'')) ? 'direction:ltr;' : '';
       return `<div style="margin-bottom:8px">
@@ -716,6 +923,15 @@ function buildDynAppHtml(app, idx, tenderId){
           onblur="updateAppField(${idx},0,'${f.key}',this.value)">
       </div>`;
     }).join('');
+  }
+
+  if (hasSignatureField) {
+    const sigVal = (app.rows && app.rows[0] && (app.rows[0].__signature || app.rows[0].signature)) || '';
+    contentHtml += `
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--s5)">
+        <div style="font-weight:700;font-size:11px;color:var(--navy);margin-bottom:6px">חתימה</div>
+        ${buildSignaturePreview(idx, 0, 'signature', sigVal)}
+      </div>`;
   }
 
   const footerHtml = `

@@ -139,6 +139,18 @@
 .ai-contact-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13.5px;color:var(--navy)}
 .ai-contact-icon{font-size:14px;flex-shrink:0;width:20px;text-align:center}
 
+/* ══ SIGNATURE MODAL ══ */
+.sign-preview{width:170px;min-height:58px;border:1.5px dashed var(--grn-border);border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:6px;transition:border-color .12s, background .12s}
+.sign-preview:hover{border-color:var(--grn2);background:var(--grn-light)}
+.sign-preview img{max-width:100%;max-height:90px;object-fit:contain}
+.sign-placeholder{font-size:11px;color:var(--s3);text-align:center;line-height:1.35}
+.sign-modal-card{max-width:560px}
+.sign-canvas-wrap{background:var(--w);border:1.5px solid var(--s5);border-radius:10px;padding:8px}
+.sign-canvas{width:100%;height:220px;border:1.5px dashed var(--grn-border);border-radius:8px;touch-action:none;cursor:crosshair;background:#fff}
+.sign-actions{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap}
+.sign-tip{font-size:11px;color:var(--s3)}
+.sign-error{margin-top:8px;font-size:12px;color:var(--red);display:none}
+
 /* ══ SCORE ROW ══ */
 .score-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .score-row-lbl{flex:1;font-size:14px;color:var(--navy)}

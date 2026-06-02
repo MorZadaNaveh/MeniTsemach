@@ -226,12 +226,16 @@ let tmDynApps = null;
 function renderTmAppendixTab(body, t){
   body.innerHTML = '<div style="text-align:center;padding:20px"><span class="spn"></span> טוען נספחים...</div>';
   loadAppendices(tmId).then(appendices => {
-    if(appendices && appendices.length > 0){
-      tmDynApps = appendices;
+    const normalized = Array.isArray(appendices) && appendices.length
+      ? appendices
+      : (Array.isArray(t.appendices) && t.appendices.length ? t.appendices : []);
+
+    if(normalized.length > 0){
+      tmDynApps = normalized;
       body.innerHTML = `
-        <div class="alert ag2" style="margin-bottom:12px">✨ ${appendices.length} נספחים — ממולאים אוטומטית מנתוני המשרד</div>
+        <div class="alert ag2" style="margin-bottom:12px">✨ ${normalized.length} נספחים — ממולאים אוטומטית מנתוני המשרד</div>
         <div class="atabs" id="tmAppTabsRow" style="flex-wrap:wrap;gap:4px">
-          ${appendices.map((app, i) =>
+          ${normalized.map((app, i) =>
             `<div class="atab ${i===0?'on':''}" onclick="switchTmDynApp(${i})">${app.title}</div>`
           ).join('')}
         </div>
@@ -248,6 +252,7 @@ function renderTmAppendixTab(body, t){
 }
 
 function switchTmDynApp(idx){
+  currentDynAppIdx = idx;
   document.querySelectorAll('#tmAppTabsRow .atab').forEach((el, i) => {
     el.className = 'atab' + (i === idx ? ' on' : '');
   });
@@ -255,6 +260,7 @@ function switchTmDynApp(idx){
 }
 
 function renderTmDynApp(idx){
+  currentDynAppIdx = idx;
   const ac = document.getElementById('tmAppContent');
   if(!ac || !tmDynApps || !tmDynApps[idx]) return;
   // Reuse the shared builder from analysis.js, but with modal-specific context

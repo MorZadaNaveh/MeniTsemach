@@ -119,10 +119,23 @@ function printDocument(docType, tidOrNull, extraArg){
       const tender = t || (currentAIResult ? { name: currentAIResult.tenderName, org: currentAIResult.orgName, number: currentAIResult.tenderNumber } : { name:'', org:'', number:'' });
       html = head + hdr(app.title, `${tender.name} | ${tender.org} | ${tender.number}`);
 
+      const isSignField = (f) => {
+        const type = String(f?.type || '').toLowerCase();
+        const label = String(f?.label || '').toLowerCase();
+        const key = String(f?.key || '').toLowerCase();
+        return type === 'signature' || label.includes('חתימ') || key.includes('sign');
+      };
+      const isSignData = (v) => typeof v === 'string' && /^data:image\/(png|jpeg|jpg);base64,/i.test(v.trim());
+
       if(app.isTable && app.fields && app.fields.length > 0){
         html += `<table><thead><tr>${app.fields.map(f=>`<th>${f.label}</th>`).join('')}</tr></thead>
         <tbody>${(app.rows||[]).map(row => `<tr>${app.fields.map(f => {
           const val = row[f.key] !== undefined ? row[f.key] : '';
+          const sharedSig = row.__signature || '';
+          const signVal = sharedSig || val;
+          if(isSignField(f) && isSignData(signVal)){
+            return `<td><img src="${signVal}" alt="חתימה" style="max-width:180px;max-height:55px;object-fit:contain"></td>`;
+          }
           const dirStyle = /^[a-zA-Z0-9@+]/.test(val+'') ? 'direction:ltr;' : '';
           return `<td style="${dirStyle}">${val}</td>`;
         }).join('')}</tr>`).join('')}</tbody></table>`;
@@ -131,7 +144,13 @@ function printDocument(docType, tidOrNull, extraArg){
         html += '<table><tbody>';
         (app.fields||[]).forEach(f => {
           const val = row[f.key] !== undefined ? row[f.key] : '';
-          html += `<tr><td style="width:32%;font-weight:700;background:#e8f5f0">${f.label}</td><td>${val}</td></tr>`;
+          const sharedSig = row.__signature || '';
+          const signVal = sharedSig || val;
+          if(isSignField(f) && isSignData(signVal)){
+            html += `<tr><td style="width:32%;font-weight:700;background:#e8f5f0">${f.label}</td><td><img src="${signVal}" alt="חתימה" style="max-width:220px;max-height:70px;object-fit:contain"></td></tr>`;
+          } else {
+            html += `<tr><td style="width:32%;font-weight:700;background:#e8f5f0">${f.label}</td><td>${val}</td></tr>`;
+          }
         });
         html += '</tbody></table>';
       }

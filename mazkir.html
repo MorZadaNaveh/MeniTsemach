@@ -238,6 +238,18 @@ html,body{height:100%;font-family:'Heebo',sans-serif;background:var(--bg);color:
 .thresh-ok{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;padding:8px 11px;background:var(--grn-light);border:1px solid var(--grn-border);border-radius:8px}
 .thresh-warn{display:flex;gap:8px;align-items:flex-start;margin-bottom:6px;padding:8px 11px;background:var(--abg);border:1px solid var(--arb);border-radius:8px}
 
+/* ══ SIGNATURE MODAL ══ */
+.sign-preview{width:170px;min-height:58px;border:1.5px dashed var(--grn-border);border-radius:7px;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:6px;transition:border-color .12s, background .12s}
+.sign-preview:hover{border-color:var(--grn2);background:var(--grn-light)}
+.sign-preview img{max-width:100%;max-height:90px;object-fit:contain}
+.sign-placeholder{font-size:11px;color:var(--s3);text-align:center;line-height:1.35}
+.sign-modal-card{max-width:560px}
+.sign-canvas-wrap{background:var(--w);border:1.5px solid var(--s5);border-radius:10px;padding:8px}
+.sign-canvas{width:100%;height:220px;border:1.5px dashed var(--grn-border);border-radius:8px;touch-action:none;cursor:crosshair;background:#fff}
+.sign-actions{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap}
+.sign-tip{font-size:11px;color:var(--s3)}
+.sign-error{margin-top:8px;font-size:12px;color:var(--red);display:none}
+
 /* ══ SCORE ROW ══ */
 .score-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
 .score-row-lbl{flex:1;font-size:14px;color:var(--navy)}
@@ -960,6 +972,35 @@ html,body{height:100%;font-family:'Heebo',sans-serif;background:var(--bg);color:
 </div>
 
 <!-- PRINT FRAME -->
+<div id="signatureModal" class="ovl" onclick="if(event.target===this)closeSignatureModal()">
+  <div class="modal sign-modal-card">
+    <div class="mh">
+      <div class="mt">חתימה</div>
+      <button class="ib" onclick="closeSignatureModal()"><svg width="14" height="14"><use href="#ic-x"/></svg></button>
+    </div>
+    <div class="mb">
+      <div class="sign-canvas-wrap">
+        <canvas id="signatureCanvas" class="sign-canvas"></canvas>
+      </div>
+      <div class="sign-actions">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn bo sm" onclick="clearSignatureCanvas()">נקה</button>
+          <label class="btn bo sm" style="margin:0">
+            העלה תמונה
+            <input id="signatureFileInput" type="file" accept="image/png,image/jpeg" style="display:none" onchange="uploadSignatureFromFile(event)">
+          </label>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn bo sm" onclick="closeSignatureModal()">ביטול</button>
+          <button class="btn bp sm" onclick="saveSignatureFromModal()">שמירה</button>
+        </div>
+      </div>
+      <div class="sign-tip">אפשר לצייר עם עכבר/מגע או להעלות קובץ PNG/JPG (עד 2MB).</div>
+      <div id="signatureError" class="sign-error"></div>
+    </div>
+  </div>
+</div>
+
 <iframe id="printFrame" style="position:absolute;width:0;height:0;border:none;left:-9999px;top:-9999px"></iframe>
 
 <!-- ══════════════════ JS ══════════════════ -->
@@ -1561,7 +1602,158 @@ function buildAppTeam(t){
   </div>`;
 }
 
+let signatureModalTarget = { mode:'tender', tenderId:0, key:'signature' };
+let signaturePadState = { drawing:false, hasInk:false, initialized:false };
+
+function isSignatureDataUrl(val){
+  return typeof val === 'string' && /^data:image\/(png|jpeg|jpg);base64,/i.test(val.trim());
+}
+
+function getSignatureStore(){
+  if(signatureModalTarget.mode === 'analysis'){
+    if(!currentAIResult) currentAIResult = {};
+    if(!currentAIResult.appendixSignatures) currentAIResult.appendixSignatures = {};
+    return currentAIResult.appendixSignatures;
+  }
+  const t = TENDERS[signatureModalTarget.tenderId];
+  if(!t.appendixSignatures) t.appendixSignatures = {};
+  return t.appendixSignatures;
+}
+
+function setSignatureError(msg){
+  const err = document.getElementById('signatureError');
+  if(!err) return;
+  err.style.display = msg ? 'block' : 'none';
+  err.textContent = msg || '';
+}
+
+function ensureSignatureCanvasSize(){
+  const canvas = document.getElementById('signatureCanvas');
+  if(!canvas) return;
+  const ratio = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(320, Math.floor(rect.width || 500));
+  const h = Math.max(180, Math.floor(rect.height || 220));
+  if(canvas.width === w * ratio && canvas.height === h * ratio) return;
+  canvas.width = w * ratio;
+  canvas.height = h * ratio;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(ratio,0,0,ratio,0,0);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle = '#12302a';
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+}
+
+function getCanvasPoint(ev, canvas){
+  const rect = canvas.getBoundingClientRect();
+  const src = ev.touches?.[0] || ev.changedTouches?.[0] || ev;
+  return { x: src.clientX - rect.left, y: src.clientY - rect.top };
+}
+
+function initSignatureCanvasEvents(){
+  if(signaturePadState.initialized) return;
+  const canvas = document.getElementById('signatureCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const start = (ev)=>{ ev.preventDefault(); ensureSignatureCanvasSize(); const p=getCanvasPoint(ev,canvas); ctx.beginPath(); ctx.moveTo(p.x,p.y); signaturePadState.drawing=true; };
+  const move = (ev)=>{ if(!signaturePadState.drawing) return; ev.preventDefault(); const p=getCanvasPoint(ev,canvas); ctx.lineTo(p.x,p.y); ctx.stroke(); signaturePadState.hasInk=true; };
+  const end = (ev)=>{ if(!signaturePadState.drawing) return; ev.preventDefault(); signaturePadState.drawing=false; };
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, { passive:false });
+  canvas.addEventListener('touchmove', move, { passive:false });
+  canvas.addEventListener('touchend', end, { passive:false });
+  signaturePadState.initialized = true;
+}
+
+function clearSignatureCanvas(){
+  ensureSignatureCanvasSize();
+  const canvas = document.getElementById('signatureCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width / (window.devicePixelRatio || 1);
+  const h = canvas.height / (window.devicePixelRatio || 1);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0,0,w,h);
+  signaturePadState.hasInk = false;
+}
+
+function drawSignatureDataUrl(dataUrl){
+  const canvas = document.getElementById('signatureCanvas');
+  if(!canvas) return;
+  ensureSignatureCanvasSize();
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  img.onload = ()=>{
+    const w = canvas.width / (window.devicePixelRatio || 1);
+    const h = canvas.height / (window.devicePixelRatio || 1);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,w,h);
+    const fit = Math.min(w/img.width, h/img.height);
+    const iw = img.width * fit, ih = img.height * fit;
+    ctx.drawImage(img, (w-iw)/2, (h-ih)/2, iw, ih);
+    signaturePadState.hasInk = true;
+  };
+  img.src = dataUrl;
+}
+
+function openSignatureModal(mode, tenderId, key){
+  signatureModalTarget = { mode, tenderId, key };
+  initSignatureCanvasEvents();
+  setSignatureError('');
+  clearSignatureCanvas();
+  const store = getSignatureStore();
+  const val = store[key] || store.signature || store.signatory || store.stamp;
+  if(isSignatureDataUrl(val)) drawSignatureDataUrl(val);
+  const fileInput = document.getElementById('signatureFileInput');
+  if(fileInput) fileInput.value = '';
+  document.getElementById('signatureModal')?.classList.add('on');
+}
+
+function closeSignatureModal(){
+  document.getElementById('signatureModal')?.classList.remove('on');
+  setSignatureError('');
+}
+
+function uploadSignatureFromFile(e){
+  const file = e?.target?.files?.[0];
+  if(!file) return;
+  if(!/^image\/(png|jpeg|jpg)$/i.test(file.type)){ setSignatureError('ניתן להעלות רק קובץ PNG/JPG.'); return; }
+  if(file.size > 2*1024*1024){ setSignatureError('הקובץ גדול מדי. המגבלה היא 2MB.'); return; }
+  setSignatureError('');
+  const reader = new FileReader();
+  reader.onload = ()=>drawSignatureDataUrl(String(reader.result||''));
+  reader.readAsDataURL(file);
+}
+
+function saveSignatureFromModal(){
+  if(!signaturePadState.hasInk){ setSignatureError('לא זוהתה חתימה. צייר/י או העלה/י תמונה.'); return; }
+  const dataUrl = document.getElementById('signatureCanvas')?.toDataURL('image/png');
+  const store = getSignatureStore();
+  store[signatureModalTarget.key] = dataUrl;
+  closeSignatureModal();
+  if(signatureModalTarget.mode === 'analysis') renderAIAppContent(aiAppTab, currentAIResult);
+  else renderAppContent(TENDERS[signatureModalTarget.tenderId]);
+}
+
+function buildSignaturePreview(mode, tenderId, key, value, label){
+  const img = isSignatureDataUrl(value)
+    ? `<img src="${value}" alt="חתימה">`
+    : `<span class="sign-placeholder">לחץ להוספת ${label}</span>`;
+  return `<button type="button" class="sign-preview" onclick="openSignatureModal('${mode}',${tenderId},'${key}')">${img}</button>`;
+}
+
 function buildAppDecl(t){
+  const mode = t && Number.isFinite(t.id) ? 'tender' : 'analysis';
+  const tenderId = mode === 'tender' ? t.id : 0;
+  const signatures = (mode === 'analysis'
+    ? (currentAIResult?.appendixSignatures || {})
+    : (t.appendixSignatures || {}));
+  const signatureValue = signatures.signature || signatures.signatory || signatures.stamp || '';
   const secs=[
     {title:"הצהרת המציע",rows:[["שם המציע",BIDDER.name],["ח.פ / ע.מ",BIDDER.vat],["כתובת",BIDDER.address],["מורשי חתימה",BIDDER.signatory],["הצהרה","כל הפרטים בהצעה נכונים ומדויקים"]]},
     {title:"הצהרת ניגוד עניינים",rows:[["ניגוד עניינים?","לא"],["עבודה קודמת ב-3 שנים?","לא"],["הצהרה","אין מניעה לביצוע העבודה"]]},
@@ -1581,9 +1773,9 @@ function buildAppDecl(t){
         <table class="atable" style="margin-bottom:0"><tbody>${s.rows.map(([k,v])=>`<tr><td style="width:36%;font-weight:700;background:var(--bg2);font-size:10px">${k}</td><td style="font-size:12px">${v}</td></tr>`).join('')}</tbody></table>
       </div>`).join('')}
       <div style="margin-top:12px;padding:10px 12px;background:var(--grn-light);border:1px solid var(--grn-border);border-radius:8px">
-        <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:8px">חתימה ואישור</div>
-        <div style="display:flex;gap:20px">
-          ${[BIDDER.signatory,'תאריך וחותמת'].map(l=>`<div style="text-align:center"><div style="width:100px;height:36px;border:1.5px dashed var(--grn-border);border-radius:5px;margin-bottom:4px"></div><div style="font-size:9.5px;color:var(--s2)">${l}</div></div>`).join('')}
+        <div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:8px">חתימה</div>
+        <div style="display:flex;justify-content:flex-start">
+          ${buildSignaturePreview(mode,tenderId,'signature',signatureValue,'חתימה')}
         </div>
       </div>
       <div class="wm">מזכיר Tender Intelligence | ${new Date().toLocaleDateString('he-IL')}</div>
@@ -2320,7 +2512,8 @@ function saveNewTender(){
     tenderBond:'TBD',performanceBond:'TBD',liabilityBond:'TBD',insurance:'TBD',
     scope:document.getElementById('ntNotes').value,
     thresholds:[],qualityScoring:[],teamReq:[],highlights:[],flags:[],
-    appExp:TENDERS[0].appExp,appTeam:TENDERS[0].appTeam
+    appExp:TENDERS[0].appExp,appTeam:TENDERS[0].appTeam,
+    appendixSignatures:{}
   };
   TENDERS.push(nt);
   closeModal('newTenderModal');
@@ -2417,6 +2610,11 @@ function printDocument(docType, tidOrNull){
       <tr><td style="font-weight:700;background:#e8f5f0">תחומי ניסיון</td><td>${m.areas}</td></tr>
     </tbody></table>`).join('')+ftr+foot;
   } else if(docType==='appDecl'&&t){
+    const sig = t.appendixSignatures || {};
+    const signatureValue = sig.signature || sig.signatory || sig.stamp || '';
+    const signatoryBox = isSignatureDataUrl(signatureValue)
+      ? `<img src="${signatureValue}" alt="חתימה" style="max-width:100%;max-height:100%;object-fit:contain">`
+      : '';
     html=head+hdr(`נספח ג' — הצהרות ותצהירים`,`${t.name} | ${t.number}`)+
     `<h2>הצהרת המציע</h2>
     <table><tbody>
@@ -2430,9 +2628,7 @@ function printDocument(docType, tidOrNull){
     <h2>אישור ניהול תקין</h2>
     <table><tbody><tr><td style="font-weight:700;background:#e8f5f0">סטטוס</td><td>פעיל — תוקף עד 31.12.2025</td></tr><tr><td style="font-weight:700;background:#e8f5f0">מספר</td><td class="mono">NIT-2025-123456</td></tr></tbody></table>
     <div class="sign-row">
-      <div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">${BIDDER.signatory}</div></div>
-      <div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">עד</div></div>
-      <div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">תאריך וחותמת</div></div>
+      <div class="sign-box"><div class="sign-line">${signatoryBox}</div><div class="sign-lbl">${BIDDER.signatory}</div></div>
     </div>`+ftr+foot;
   } else if(docType==='fullPackage'&&t){
     html=head+hdr(`חבילת הגשה מלאה: ${t.name}`,`${t.org} | ${t.number} | ${today}`)+

@@ -669,6 +669,36 @@
   </div>
 </div>
 
+<!-- SIGNATURE MODAL -->
+<div id="signatureModal" class="ovl" onclick="if(event.target===this)closeSignatureModal()">
+  <div class="modal sign-modal-card">
+    <div class="mh">
+      <div class="mt">חתימה</div>
+      <button class="ib" onclick="closeSignatureModal()"><svg width="14" height="14"><use href="#ic-x"/></svg></button>
+    </div>
+    <div class="mb">
+      <div class="sign-canvas-wrap">
+        <canvas id="signatureCanvas" class="sign-canvas"></canvas>
+      </div>
+      <div class="sign-actions">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn bo sm" onclick="clearSignatureCanvas()">נקה</button>
+          <label class="btn bo sm" style="margin:0">
+            העלה תמונה
+            <input id="signatureFileInput" type="file" accept="image/png,image/jpeg" style="display:none" onchange="uploadSignatureFromFile(event)">
+          </label>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn bo sm" onclick="closeSignatureModal()">ביטול</button>
+          <button class="btn bp sm" onclick="saveSignatureFromModal()">שמירה</button>
+        </div>
+      </div>
+      <div class="sign-tip">אפשר לצייר עם עכבר/מגע או להעלות קובץ PNG/JPG (עד 2MB).</div>
+      <div id="signatureError" class="sign-error"></div>
+    </div>
+  </div>
+</div>
+
 <!-- PRINT FRAME -->
 <iframe id="printFrame" style="position:absolute;width:0;height:0;border:none;left:-9999px;top:-9999px"></iframe>
 
