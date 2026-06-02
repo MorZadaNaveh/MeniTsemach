@@ -72,7 +72,7 @@
 .mf{padding:12px 20px;border-top:1px solid var(--s5);display:flex;gap:7px;justify-content:flex-end;background:var(--bg2);border-radius:0 0 16px 16px}
 
 /* ══ ATABS ══ */
-.atabs{display:flex;border-bottom:2px solid var(--s5);margin-bottom:12px}
+.atabs{display:flex;flex-wrap:wrap;gap:2px;border-bottom:2px solid var(--s5);margin-bottom:12px}
 .atab{padding:7px 13px;font-size:12px;font-weight:600;cursor:pointer;color:var(--s2);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .13s;user-select:none;touch-action:manipulation}
 .atab.on{color:var(--grn);border-bottom-color:var(--grn2)}
 

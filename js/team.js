@@ -1,5 +1,41 @@
 'use strict';
 
+function ensureDemoTeamMembers(){
+  const demoMembers = [
+    {
+      name:'יעל כהן', title:'רו"ח (CPA)', role:'ראש צוות ביקורת',
+      years:11, color:'#1a5c4a', ini:'יכ',
+      certs:['רו"ח','CPA','CISA'],
+      areas:['ביקורת פנימית','תקציב עירוני','חשבונאות ממשלתית','ציות ורגולציה']
+    },
+    {
+      name:'עומר לוי', title:'רו"ח', role:'מבקר בכיר',
+      years:7, color:'#2d9b6f', ini:'על',
+      certs:['רו"ח'],
+      areas:['ביקורת שכר','ביקורת רכש','ניהול סיכונים','בקרת פרויקטים']
+    },
+    {
+      name:'נועה בן דוד', title:'כלכלנית', role:'אנליסטית ביקורת',
+      years:4, color:'#1e5c9a', ini:'נב',
+      certs:['BA כלכלה'],
+      areas:['ייעוץ כלכלי','בקרת מלאי','ניהול חוזים']
+    }
+  ];
+
+  let added = 0;
+  demoMembers.forEach(dm=>{
+    const exists = teamMembers.some(m=>String(m.name||'').trim() === dm.name);
+    if(!exists){
+      teamMembers.push(dm);
+      added++;
+    }
+  });
+
+  if(added > 0 && typeof saveAllTeam === 'function'){
+    saveAllTeam();
+  }
+}
+
 /* ═════ TEAM ═════ */
 function renderTeam(){
   const grid = document.getElementById('teamGrid');

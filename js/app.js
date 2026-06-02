@@ -14,6 +14,10 @@ async function initApp(){
 
   if(content) content.style.opacity = '1';
 
+  if(typeof ensureDemoTeamMembers === 'function'){
+    ensureDemoTeamMembers();
+  }
+
   renderHome();
   renderDashboard();
   renderTenderTable();

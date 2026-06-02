@@ -7,6 +7,109 @@ function formatScoreDisplay(item){
   return '—';
 }
 
+function renderTeamFitList(t){
+  if(!teamMembers.length){
+    return '<div class="alert ab2" style="font-size:12px">אין חברי צוות במאגר עדיין.</div>';
+  }
+
+  const reqText = [
+    t.type || '',
+    ...(t.thresholds || []),
+    ...(t.highlights || []),
+    ...(t.qualityScoring || []).map(q => `${q.l || ''} ${q.detail || ''}`)
+  ].join(' ').toLowerCase();
+
+  const rows = teamMembers.map(m=>{
+    const reasons = [];
+    const missing = [];
+    let score = 0;
+
+    const years = Number(m.years || 0);
+    if (years >= 8) { score += 30; reasons.push(`${years} שנות ניסיון`); }
+    else if (years >= 5) { score += 22; reasons.push(`${years} שנות ניסיון`); }
+    else if (years >= 3) { score += 14; reasons.push(`${years} שנות ניסיון`); }
+    else missing.push('ותק נמוך');
+
+    const roleText = `${m.role || ''} ${m.title || ''}`.toLowerCase();
+    if (roleText.includes('רו') || roleText.includes('חשבון') || roleText.includes('ביקורת')) {
+      score += 25;
+      reasons.push('תפקיד/תואר רלוונטי');
+    } else {
+      missing.push('תפקיד פחות רלוונטי');
+    }
+
+    const certs = (m.certs || []).join(' ').toLowerCase();
+    if (certs.includes('רו') || certs.includes('cpa')) {
+      score += 20;
+      reasons.push('הסמכת רו"ח');
+    } else {
+      missing.push('לא זוהתה הסמכת רו"ח');
+    }
+
+    const areas = (m.areas || []).map(a=>String(a).toLowerCase());
+    let overlap = 0;
+    if (reqText.includes('ביקורת')) overlap += areas.filter(a=>a.includes('ביקורת')).length > 0 ? 1 : 0;
+    if (reqText.includes('מקומי') || reqText.includes('רשות')) overlap += areas.filter(a=>a.includes('תקציב') || a.includes('ציבור') || a.includes('ממשלת')).length > 0 ? 1 : 0;
+    if (reqText.includes('סיכונים')) overlap += areas.filter(a=>a.includes('סיכונים') || a.includes('ציות')).length > 0 ? 1 : 0;
+    score += Math.min(25, overlap * 10);
+    if (overlap > 0) reasons.push('חפיפה לתחומי המכרז');
+    else missing.push('אין חפיפה ברורה לתחומי המכרז');
+
+    let fitTier = 'low';
+    let statusLabel = 'התאמה נמוכה';
+    let statusClass = 'br';
+    if (score >= 75) {
+      fitTier = 'mostly';
+      statusLabel = 'התאמה גבוהה';
+      statusClass = 'bgg';
+    } else if (score >= 50) {
+      fitTier = 'partial';
+      statusLabel = 'התאמה חלקית';
+      statusClass = 'ba';
+    }
+
+    return {
+      member: m,
+      score: Math.min(100, score),
+      fitTier,
+      statusLabel,
+      statusClass,
+      reasons: reasons.slice(0,3),
+      missing: missing.slice(0,2)
+    };
+  }).sort((a,b)=>b.score-a.score);
+
+  const groups = [
+    {key:'mostly', title:'מתאימים ביותר', rows:rows.filter(r=>r.fitTier==='mostly')},
+    {key:'partial', title:'מתאימים חלקית', rows:rows.filter(r=>r.fitTier==='partial')},
+    {key:'low', title:'התאמה נמוכה', rows:rows.filter(r=>r.fitTier==='low')}
+  ];
+
+  const renderRow = (r, idx)=>`
+    <tr>
+      <td style="font-weight:700">${idx+1}. ${r.member.name} ${r.member.title||''}</td>
+      <td style="font-size:11px;color:var(--s2)">${r.member.role || '—'}</td>
+      <td style="text-align:center"><span class="badge ${r.statusClass}" style="font-size:9px">${r.statusLabel}</span></td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-weight:800;text-align:center">${r.score}</td>
+      <td style="font-size:11px;color:var(--grn)">${r.reasons.join(' · ') || '—'}</td>
+      <td style="font-size:11px;color:var(--amb)">${r.missing.join(' · ') || '—'}</td>
+    </tr>`;
+
+  return groups.map(g=>`
+    <div style="margin-bottom:10px">
+      <div style="font-weight:800;font-size:12px;color:var(--navy);margin-bottom:5px">${g.title} (${g.rows.length})</div>
+      ${g.rows.length ? `
+        <div style="overflow-x:auto">
+          <table class="atable">
+            <thead><tr><th>חבר צוות</th><th>תפקיד</th><th>סטטוס</th><th>ציון</th><th>למה מתאים</th><th>מה חסר</th></tr></thead>
+            <tbody>${g.rows.map((r,i)=>renderRow(r,i)).join('')}</tbody>
+          </table>
+        </div>
+      ` : '<div class="alert ab2" style="font-size:11px">אין חברי צוות בקטגוריה זו</div>'}
+    </div>
+  `).join('');
+}
+
 /* ═════ TENDERS TABLE ═════ */
 function renderTenderTable(){
   const list = tenderFilter==='all'?TENDERS:TENDERS.filter(t=>t.status===tenderFilter);
@@ -103,12 +206,13 @@ function renderTenderModal(){
     </div>`;
   // Tabs
   document.getElementById('tmTabs').innerHTML =
-    [['overview','סקירה'],['scoring','ניקוד'],['team','צוות'],['appendix','נספחים'],['export','📦 ZIP']].map(([v,l])=>
+    [['overview','סקירה'],['scoring','ניקוד'],['fit','התאמת צוות'],['team','צוות'],['appendix','נספחים'],['export','📦 ZIP']].map(([v,l])=>
       `<div class="atab ${tmTab===v?'on':''}" onclick="switchTmTab('${v}')">${l}</div>`
     ).join('');
   const body = document.getElementById('tmBody');
   if(tmTab==='overview') body.innerHTML = buildOverviewTab(t);
   else if(tmTab==='scoring') body.innerHTML = buildScoringTab(t);
+  else if(tmTab==='fit') body.innerHTML = buildFitTab(t);
   else if(tmTab==='team') body.innerHTML = buildTeamTab(t);
   else if(tmTab==='appendix'){ renderTmAppendixTab(body, t); }
   else if(tmTab==='export') body.innerHTML = buildExportTab(t);
@@ -226,6 +330,15 @@ function buildScoringTab(t){
     <div class="alert ag2" style="margin-top:8px">סה"כ ניקוד איכותי משוער: <strong>${sc}</strong></div>
     <div style="display:flex;justify-content:flex-end;margin-top:9px">
       <button class="btn bo sm" onclick="printDocument('scoring',${t.id})"><svg width="12" height="12"><use href="#ic-print"/></svg> הדפס</button>
+    </div>`;
+}
+
+function buildFitTab(t){
+  return `
+    <div class="alert ag2" style="margin-bottom:10px">התאמה מחושבת לפי ותק, תפקיד/תואר, הסמכות וחפיפה לתחומי המכרז.</div>
+    ${renderTeamFitList(t)}
+    <div style="display:flex;justify-content:flex-end;margin-top:9px">
+      <button class="btn bo sm" onclick="printDocument('team',${t.id})"><svg width="12" height="12"><use href="#ic-print"/></svg> הדפס</button>
     </div>`;
 }
 

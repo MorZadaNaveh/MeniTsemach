@@ -14,6 +14,25 @@ function formatScoreDisplay(item){
   return '—';
 }
 
+function buildAnalysisFitTab(analysisResult){
+  if (typeof renderTeamFitList !== 'function') {
+    return '<div class="alert ab2" style="font-size:12px">רכיב התאמת הצוות עדיין לא זמין במסך זה.</div>';
+  }
+  const tenderLike = {
+    type: analysisResult?.type || '',
+    thresholds: [
+      ...(analysisResult?.adminThresholds || []),
+      ...((analysisResult?.professionalThresholds || []).map(p=>`${p.field}: ${p.detail}`))
+    ],
+    highlights: analysisResult?.highlights || [],
+    qualityScoring: analysisResult?.qualityScoring || []
+  };
+  return `
+    <div class="alert ag2" style="margin-bottom:10px">התאמה מחושבת לפי ותק, תפקיד/תואר, הסמכות וחפיפה לתחומי המכרז.</div>
+    ${renderTeamFitList(tenderLike)}
+  `;
+}
+
 function extractSection132Scoring(fullText){
   const normalized = String(fullText || '')
     .replace(/\u00a0/g, ' ')
@@ -565,6 +584,9 @@ function switchAITab(tab, el){
     body.innerHTML = empty
       ? '<div class="alert ab2">לא זוהו מדדי ניקוד במסמך</div>'
       : `${minScoreHtml}${noteHtml}${qualityHtml}${priceHtml}`;
+  }
+  else if(tab==='fit'){
+    body.innerHTML = buildAnalysisFitTab(r);
   }
   else if(tab==='docs'){
     const apps = r.appendices || [];

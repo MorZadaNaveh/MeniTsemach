@@ -181,7 +181,7 @@ html,body{height:100%;font-family:'Heebo',sans-serif;background:var(--bg);color:
 .uzone:hover,.uzone.drag{border-color:var(--grn2);background:var(--grn-light)}
 
 /* ══ ATABS ══ */
-.atabs{display:flex;border-bottom:2px solid var(--s5);margin-bottom:12px}
+.atabs{display:flex;flex-wrap:wrap;gap:2px;border-bottom:2px solid var(--s5);margin-bottom:12px}
 .atab{padding:7px 13px;font-size:12px;font-weight:600;cursor:pointer;color:var(--s2);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .13s;user-select:none;touch-action:manipulation}
 .atab.on{color:var(--grn);border-bottom-color:var(--grn2)}
 
@@ -620,6 +620,7 @@ html,body{height:100%;font-family:'Heebo',sans-serif;background:var(--bg);color:
             <div class="tabs" id="aiResultTabs">
               <div class="tab on" onclick="switchAITab('overview',this)">סקירה</div>
               <div class="tab" onclick="switchAITab('scoring',this)">ניקוד</div>
+              <div class="tab" onclick="switchAITab('fit',this)">התאמת צוות</div>
               <div class="tab" onclick="switchAITab('team',this)">צוות</div>
               <div class="tab" onclick="switchAITab('docs',this)">נספחים</div>
             </div>
@@ -1356,12 +1357,13 @@ function renderTenderModal(){
     </div>`;
   // Tabs
   document.getElementById('tmTabs').innerHTML =
-    [['overview','סקירה'],['scoring','ניקוד'],['team','צוות'],['appendix','נספחים'],['export','📦 ZIP']].map(([v,l])=>
+    [['overview','סקירה'],['scoring','ניקוד'],['fit','התאמת צוות'],['team','צוות'],['appendix','נספחים'],['export','📦 ZIP']].map(([v,l])=>
       `<div class="atab ${tmTab===v?'on':''}" onclick="switchTmTab('${v}')">${l}</div>`
     ).join('');
   const body = document.getElementById('tmBody');
   if(tmTab==='overview') body.innerHTML = buildOverviewTab(t);
   else if(tmTab==='scoring') body.innerHTML = buildScoringTab(t);
+  else if(tmTab==='fit') body.innerHTML = buildFitTab(t);
   else if(tmTab==='team') body.innerHTML = buildTeamTab(t);
   else if(tmTab==='appendix'){ body.innerHTML = buildAppShell(); renderAppContent(t); }
   else if(tmTab==='export') body.innerHTML = buildExportTab(t);
@@ -1414,6 +1416,64 @@ function buildScoringTab(t){
     <div style="display:flex;justify-content:flex-end;margin-top:9px">
       <button class="btn bo sm" onclick="printDocument('scoring',${t.id})"><svg width="12" height="12"><use href="#ic-print"/></svg> הדפס</button>
     </div>`;
+}
+
+function renderTeamFitListForTender(t){
+  if(!teamMembers.length){
+    return '<div class="alert ab2" style="font-size:12px">אין חברי צוות במאגר עדיין.</div>';
+  }
+  const reqText = [t.type || '', ...(t.thresholds || []), ...(t.highlights || [])].join(' ').toLowerCase();
+  const rows = teamMembers.map(m=>{
+    let score = 0;
+    const reasons = [];
+    const missing = [];
+    const years = +m.years || 0;
+    if (years >= 8) { score += 30; reasons.push(`${years} שנות ניסיון`); }
+    else if (years >= 5) { score += 22; reasons.push(`${years} שנות ניסיון`); }
+    else if (years >= 3) { score += 14; reasons.push(`${years} שנות ניסיון`); }
+    else missing.push('ותק נמוך');
+
+    const roleText = `${m.role||''} ${m.title||''}`.toLowerCase();
+    if (roleText.includes('רו') || roleText.includes('חשבון') || roleText.includes('ביקורת')) { score += 25; reasons.push('תפקיד/תואר רלוונטי'); }
+    else missing.push('תפקיד פחות רלוונטי');
+
+    const certs = String(m.certs || '').toLowerCase();
+    if (certs.includes('רו') || certs.includes('cpa')) { score += 20; reasons.push('הסמכת רו"ח'); }
+    else missing.push('לא זוהתה הסמכת רו"ח');
+
+    const areas = Array.isArray(m.areas) ? m.areas.map(a=>String(a).toLowerCase()) : [];
+    const overlap = areas.some(a=>reqText.includes('ביקורת') && a.includes('ביקורת')) ? 1 : 0;
+    if (overlap) { score += 15; reasons.push('חפיפה לתחומי המכרז'); }
+    else missing.push('אין חפיפה ברורה לתחומים');
+
+    const tier = score >= 75 ? 'high' : score >= 50 ? 'partial' : 'low';
+    const label = tier==='high' ? 'התאמה גבוהה' : tier==='partial' ? 'התאמה חלקית' : 'התאמה נמוכה';
+    const cls = tier==='high' ? 'bgg' : tier==='partial' ? 'ba' : 'br';
+    return {m, score:Math.min(100,score), reasons, missing, tier, label, cls};
+  }).sort((a,b)=>b.score-a.score);
+
+  const groups = [
+    {key:'high', title:'מתאימים ביותר'},
+    {key:'partial', title:'מתאימים חלקית'},
+    {key:'low', title:'התאמה נמוכה'}
+  ];
+  return groups.map(g=>{
+    const groupRows = rows.filter(r=>r.tier===g.key);
+    return `<div style="margin-bottom:10px">
+      <div style="font-weight:800;font-size:12px;color:var(--navy);margin-bottom:5px">${g.title} (${groupRows.length})</div>
+      ${groupRows.length ? `<div style="overflow-x:auto"><table class="atable">
+        <thead><tr><th>חבר צוות</th><th>תפקיד</th><th>סטטוס</th><th>ציון</th><th>למה מתאים</th><th>מה חסר</th></tr></thead>
+        <tbody>${groupRows.map((r,i)=>`<tr><td style="font-weight:700">${i+1}. ${r.m.name} ${r.m.title||''}</td><td style="font-size:11px;color:var(--s2)">${r.m.role||'—'}</td><td style="text-align:center"><span class="badge ${r.cls}" style="font-size:9px">${r.label}</span></td><td style="font-family:'IBM Plex Mono',monospace;font-weight:800;text-align:center">${r.score}</td><td style="font-size:11px;color:var(--grn)">${r.reasons.join(' · ')||'—'}</td><td style="font-size:11px;color:var(--amb)">${r.missing.join(' · ')||'—'}</td></tr>`).join('')}</tbody>
+      </table></div>` : '<div class="alert ab2" style="font-size:11px">אין חברי צוות בקטגוריה זו</div>'}
+    </div>`;
+  }).join('');
+}
+
+function buildFitTab(t){
+  return `
+    <div class="alert ag2" style="margin-bottom:10px">התאמה מחושבת לפי ותק, תפקיד/תואר, הסמכות וחפיפה לתחומי המכרז.</div>
+    ${renderTeamFitListForTender(t)}
+  `;
 }
 
 function buildTeamTab(t){
@@ -1805,6 +1865,65 @@ function showAIResult(result){
 }
 
 let aiTab = 'overview';
+
+function renderAIFitList(r){
+  if(!teamMembers.length){
+    return '<div class="alert ab2" style="font-size:12px">אין חברי צוות במאגר עדיין.</div>';
+  }
+  const reqText = [
+    r.type || '',
+    ...(r.thresholds || []),
+    ...(r.adminThresholds || []),
+    ...((r.professionalThresholds || []).map(x=>`${x.field||''} ${x.detail||''}`)),
+    ...(r.highlights || [])
+  ].join(' ').toLowerCase();
+
+  const rows = teamMembers.map(m=>{
+    let score = 0;
+    const reasons = [];
+    const missing = [];
+    const years = +m.years || 0;
+    if (years >= 8) { score += 30; reasons.push(`${years} שנות ניסיון`); }
+    else if (years >= 5) { score += 22; reasons.push(`${years} שנות ניסיון`); }
+    else if (years >= 3) { score += 14; reasons.push(`${years} שנות ניסיון`); }
+    else missing.push('ותק נמוך');
+
+    const roleText = `${m.role||''} ${m.title||''}`.toLowerCase();
+    if (roleText.includes('רו') || roleText.includes('חשבון') || roleText.includes('ביקורת')) { score += 25; reasons.push('תפקיד/תואר רלוונטי'); }
+    else missing.push('תפקיד פחות רלוונטי');
+
+    const certs = String(m.certs || '').toLowerCase();
+    if (certs.includes('רו') || certs.includes('cpa')) { score += 20; reasons.push('הסמכת רו"ח'); }
+    else missing.push('לא זוהתה הסמכת רו"ח');
+
+    const areas = Array.isArray(m.areas) ? m.areas.map(a=>String(a).toLowerCase()) : [];
+    const overlap = areas.some(a => (reqText.includes('ביקורת') && a.includes('ביקורת')) || (reqText.includes('רשות') && (a.includes('ציבור') || a.includes('תקציב'))));
+    if (overlap) { score += 15; reasons.push('חפיפה לתחומי המכרז'); }
+    else missing.push('אין חפיפה ברורה לתחומים');
+
+    const tier = score >= 75 ? 'high' : score >= 50 ? 'partial' : 'low';
+    const label = tier==='high' ? 'התאמה גבוהה' : tier==='partial' ? 'התאמה חלקית' : 'התאמה נמוכה';
+    const cls = tier==='high' ? 'bgg' : tier==='partial' ? 'ba' : 'br';
+    return {m, score:Math.min(100,score), reasons, missing, tier, label, cls};
+  }).sort((a,b)=>b.score-a.score);
+
+  const groups = [
+    {key:'high', title:'מתאימים ביותר'},
+    {key:'partial', title:'מתאימים חלקית'},
+    {key:'low', title:'התאמה נמוכה'}
+  ];
+  return groups.map(g=>{
+    const rs = rows.filter(x=>x.tier===g.key);
+    return `<div style="margin-bottom:10px">
+      <div style="font-weight:800;font-size:12px;color:var(--navy);margin-bottom:5px">${g.title} (${rs.length})</div>
+      ${rs.length ? `<div style="overflow-x:auto"><table class="atable">
+        <thead><tr><th>חבר צוות</th><th>תפקיד</th><th>סטטוס</th><th>ציון</th><th>למה מתאים</th><th>מה חסר</th></tr></thead>
+        <tbody>${rs.map((x,i)=>`<tr><td style="font-weight:700">${i+1}. ${x.m.name} ${x.m.title||''}</td><td style="font-size:11px;color:var(--s2)">${x.m.role||'—'}</td><td style="text-align:center"><span class="badge ${x.cls}" style="font-size:9px">${x.label}</span></td><td style="font-family:'IBM Plex Mono',monospace;font-weight:800;text-align:center">${x.score}</td><td style="font-size:11px;color:var(--grn)">${x.reasons.join(' · ')||'—'}</td><td style="font-size:11px;color:var(--amb)">${x.missing.join(' · ')||'—'}</td></tr>`).join('')}</tbody>
+      </table></div>` : '<div class="alert ab2" style="font-size:11px">אין חברי צוות בקטגוריה זו</div>'}
+    </div>`;
+  }).join('');
+}
+
 function switchAITab(tab, el){
   aiTab = tab;
   if(el){
@@ -1850,6 +1969,12 @@ function switchAITab(tab, el){
       ${tr.length?`<table class="atable"><thead><tr><th>תפקיד</th><th>דרישות מינימום</th><th>מוצע</th></tr></thead><tbody>
         ${tr.map((req,i)=>{const m=teamMembers[i%teamMembers.length];return`<tr><td style="font-weight:700">${req.role}</td><td style="font-size:11px">${req.req}</td><td><div style="display:flex;align-items:center;gap:7px"><div style="width:22px;height:22px;border-radius:5px;background:${m.color};display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0">${m.ini}</div><div style="font-size:12px;font-weight:700">${m.name} ${m.title}</div></div></td></tr>`;}).join('')}
       </tbody></table>` : '<div class="alert ab2">🤖 לא זוהו דרישות צוות ספציפיות בקובץ</div>'}`;
+  }
+  else if(tab==='fit'){
+    body.innerHTML = `
+      <div class="alert ag2" style="margin-bottom:10px">התאמה מחושבת לפי ותק, תפקיד/תואר, הסמכות וחפיפה לתחומי המכרז.</div>
+      ${renderAIFitList(r)}
+    `;
   }
   else if(tab==='docs'){
     body.innerHTML=`
