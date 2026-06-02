@@ -550,24 +550,24 @@ function switchAITab(tab, el){
 
     /* הערה על ציון מזערי */
     const minScoreHtml = r.minQualityScore ? `
-      <div class="alert aa" style="margin-bottom:10px;font-size:12px">⚠️ ציון האיכות המזערי למעבר לשלב בדיקת המחיר הוא <strong>${r.minQualityScore}</strong></div>` : '';
+      <div class="alert aa" style="margin-bottom:10px;font-size:13px">⚠️ ציון האיכות המזערי למעבר לשלב בדיקת המחיר הוא <strong>${r.minQualityScore}</strong></div>` : '';
 
     /* הערה כללית */
-    const noteHtml = r.scoringNote ? `<div class="alert ag2" style="margin-bottom:10px;font-size:12px">📊 ${r.scoringNote}</div>` : '';
+    const noteHtml = r.scoringNote ? `<div class="alert ag2" style="margin-bottom:10px;font-size:13px">📊 ${r.scoringNote}</div>` : '';
 
     /* תצוגת סעיפים: פירוט + ניקוד */
     const qualityHtml = qs.length ? `
       <div class="stl">מדדי איכות (חלוקה לסעיפים)</div>
       ${qs.map((q,i)=>`
-        <div style="display:grid;grid-template-columns:1fr 90px;gap:10px;border:1px solid var(--s5);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:var(--w)">
+        <div style="display:grid;grid-template-columns:1fr 104px;gap:12px;border:1px solid var(--s5);border-radius:10px;padding:12px 13px;margin-bottom:10px;background:var(--w)">
           <div>
-            <div style="font-weight:700;font-size:12.5px;color:var(--navy);margin-bottom:4px">${i+1}. ${q.l}</div>
-            <div style="font-size:11.5px;line-height:1.55;color:var(--s2)">${q.detail||'—'}</div>
+            <div style="font-weight:700;font-size:14px;line-height:1.45;color:var(--navy);margin-bottom:6px">${i+1}. ${q.l}</div>
+            <div style="font-size:13px;line-height:1.65;color:var(--s2)">${q.detail||'—'}</div>
           </div>
           <div style="display:flex;align-items:center;justify-content:center">
-            <div style="text-align:center;background:var(--grn-light);border:1px solid var(--grn-border);border-radius:9px;padding:8px 6px;min-width:74px">
-              <div style="font-size:9px;color:var(--s3);margin-bottom:1px">ניקוד</div>
-              <div style="font-family:'IBM Plex Mono',monospace;font-weight:800;font-size:13px;color:var(--grn)">${formatScoreDisplay(q)}</div>
+            <div style="text-align:center;background:var(--grn-light);border:1px solid var(--grn-border);border-radius:9px;padding:9px 8px;min-width:86px">
+              <div style="font-size:11px;color:var(--s3);margin-bottom:2px">ניקוד</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-weight:800;font-size:15px;line-height:1.2;color:var(--grn)">${formatScoreDisplay(q)}</div>
             </div>
           </div>
         </div>

@@ -311,22 +311,22 @@ function buildScoringTab(t){
   const sc = quality.reduce((a,q)=>a+q.estimated,0);
   return `
     <div class="stl">תנאי סף — בינארי</div>
-    ${t.thresholds.map(th=>`<div class="thresh-ok"><span style="color:var(--grn);flex-shrink:0">✅</span><span style="font-size:12.5px">${th}</span></div>`).join('')}
+    ${t.thresholds.map(th=>`<div class="thresh-ok"><span style="color:var(--grn);flex-shrink:0">✅</span><span style="font-size:14px;line-height:1.55">${th}</span></div>`).join('')}
     <div class="stl" style="margin-top:14px">ניקוד איכותי (סעיפים)</div>
     ${quality.length ? quality.map((q,i)=>`
-      <div style="display:grid;grid-template-columns:1fr 90px;gap:10px;border:1px solid var(--s5);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:var(--w)">
+      <div style="display:grid;grid-template-columns:1fr 104px;gap:12px;border:1px solid var(--s5);border-radius:10px;padding:12px 13px;margin-bottom:10px;background:var(--w)">
         <div>
-          <div style="font-weight:700;font-size:12.5px;color:var(--navy);margin-bottom:4px">${i+1}. ${q.l}</div>
-          <div style="font-size:11.5px;line-height:1.55;color:var(--s2)">${q.detail || 'אין פירוט נוסף'}</div>
+          <div style="font-weight:700;font-size:14px;line-height:1.45;color:var(--navy);margin-bottom:6px">${i+1}. ${q.l}</div>
+          <div style="font-size:13px;line-height:1.65;color:var(--s2)">${q.detail || 'אין פירוט נוסף'}</div>
         </div>
         <div style="display:flex;align-items:center;justify-content:center">
-          <div style="text-align:center;background:var(--grn-light);border:1px solid var(--grn-border);border-radius:9px;padding:8px 6px;min-width:74px">
-            <div style="font-size:9px;color:var(--s3);margin-bottom:1px">ניקוד</div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-weight:800;font-size:13px;color:var(--grn)">${formatScoreDisplay(q)}</div>
+          <div style="text-align:center;background:var(--grn-light);border:1px solid var(--grn-border);border-radius:9px;padding:9px 8px;min-width:86px">
+            <div style="font-size:11px;color:var(--s3);margin-bottom:2px">ניקוד</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:800;font-size:15px;line-height:1.2;color:var(--grn)">${formatScoreDisplay(q)}</div>
           </div>
         </div>
       </div>
-    `).join('') : '<div class="alert ab2" style="font-size:12px">לא זוהו מדדי ניקוד במכרז</div>'}
+    `).join('') : '<div class="alert ab2" style="font-size:13px">לא זוהו מדדי ניקוד במכרז</div>'}
     <div class="alert ag2" style="margin-top:8px">סה"כ ניקוד איכותי משוער: <strong>${sc}</strong></div>
     <div style="display:flex;justify-content:flex-end;margin-top:9px">
       <button class="btn bo sm" onclick="printDocument('scoring',${t.id})"><svg width="12" height="12"><use href="#ic-print"/></svg> הדפס</button>
@@ -343,7 +343,7 @@ function buildFitTab(t){
 }
 
 function buildTeamTab(t){
-  if(!(t.teamReq||[]).length) return '<div class="alert ab2" style="font-size:12px">לא זוהו דרישות צוות במכרז זה.</div>';
+  if(!(t.teamReq||[]).length) return '<div class="alert ab2" style="font-size:13px">לא זוהו דרישות צוות במכרז זה.</div>';
   return `
     <div class="stl">הרכב הצוות הנדרש</div>
     <table class="atable">
