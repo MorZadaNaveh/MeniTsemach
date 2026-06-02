@@ -1,5 +1,12 @@
 'use strict';
 
+function formatScoreDisplay(item){
+  const raw = Number(item?.m);
+  const hasRaw = Number.isFinite(raw) && raw > 0;
+  if (hasRaw) return `${raw} נק'`;
+  return '—';
+}
+
 /* ═════ TENDERS TABLE ═════ */
 function renderTenderTable(){
   const list = tenderFilter==='all'?TENDERS:TENDERS.filter(t=>t.status===tenderFilter);
@@ -191,18 +198,32 @@ function buildOverviewTab(t){
 }
 
 function buildScoringTab(t){
-  const sc = t.qualityScoring.reduce((a,q)=>a+Math.round(q.m*0.88),0);
+  const quality = (t.qualityScoring||[]).map(q=>{
+    const wNum = parseInt(String(q.w||'').replace('%',''), 10);
+    const m = Number.isFinite(+q.m) && +q.m > 0 ? +q.m : (Number.isFinite(wNum) ? wNum : 0);
+    const estimated = m > 0 ? Math.round(m * 0.88) : 0;
+    return { ...q, m, estimated, wLabel: q.w || (m ? `${m}%` : '') };
+  });
+  const sc = quality.reduce((a,q)=>a+q.estimated,0);
   return `
     <div class="stl">תנאי סף — בינארי</div>
     ${t.thresholds.map(th=>`<div class="thresh-ok"><span style="color:var(--grn);flex-shrink:0">✅</span><span style="font-size:12.5px">${th}</span></div>`).join('')}
-    <div class="stl" style="margin-top:14px">ניקוד איכותי</div>
-    <table class="atable">
-      <thead><tr><th>קריטריון</th><th>משקל</th><th>מקסימום</th><th>ניקוד משוער</th></tr></thead>
-      <tbody>
-        ${t.qualityScoring.map(q=>{const e=Math.round(q.m*0.88);return`<tr><td style="font-weight:600">${q.l}</td><td>${q.w}%</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:700">${q.m}</td><td><div style="display:flex;align-items:center;gap:7px"><div style="flex:1"><div class="prog"><div class="pf" style="width:${(e/q.m)*100}%;background:linear-gradient(90deg,var(--grn),var(--grn3))"></div></div></div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;color:var(--grn)">${e}</span></div></td></tr>`;}).join('')}
-        <tr style="background:var(--grn-light)"><td style="font-weight:800">סה"כ</td><td style="font-weight:700">100%</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:700">100</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--grn)">${sc}</td></tr>
-      </tbody>
-    </table>
+    <div class="stl" style="margin-top:14px">ניקוד איכותי (סעיפים)</div>
+    ${quality.length ? quality.map((q,i)=>`
+      <div style="display:grid;grid-template-columns:1fr 90px;gap:10px;border:1px solid var(--s5);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:var(--w)">
+        <div>
+          <div style="font-weight:700;font-size:12.5px;color:var(--navy);margin-bottom:4px">${i+1}. ${q.l}</div>
+          <div style="font-size:11.5px;line-height:1.55;color:var(--s2)">${q.detail || 'אין פירוט נוסף'}</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center">
+          <div style="text-align:center;background:var(--grn-light);border:1px solid var(--grn-border);border-radius:9px;padding:8px 6px;min-width:74px">
+            <div style="font-size:9px;color:var(--s3);margin-bottom:1px">ניקוד</div>
+            <div style="font-family:'IBM Plex Mono',monospace;font-weight:800;font-size:13px;color:var(--grn)">${formatScoreDisplay(q)}</div>
+          </div>
+        </div>
+      </div>
+    `).join('') : '<div class="alert ab2" style="font-size:12px">לא זוהו מדדי ניקוד במכרז</div>'}
+    <div class="alert ag2" style="margin-top:8px">סה"כ ניקוד איכותי משוער: <strong>${sc}</strong></div>
     <div style="display:flex;justify-content:flex-end;margin-top:9px">
       <button class="btn bo sm" onclick="printDocument('scoring',${t.id})"><svg width="12" height="12"><use href="#ic-print"/></svg> הדפס</button>
     </div>`;

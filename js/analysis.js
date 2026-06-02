@@ -7,6 +7,142 @@ if(typeof pdfjsLib!=='undefined'){
 
 let uploadedFiles = [];
 
+function formatScoreDisplay(item){
+  const raw = Number(item?.m);
+  const hasRaw = Number.isFinite(raw) && raw > 0;
+  if (hasRaw) return `${raw} נק'`;
+  return '—';
+}
+
+function extractSection132Scoring(fullText){
+  const normalized = String(fullText || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\t/g, ' ')
+    .replace(/[ ]{2,}/g, ' ');
+  const start = normalized.search(/13\.2[\s\S]{0,40}(בדיקת איכות|איכות)/);
+  if (start < 0) return [];
+  const after = normalized.slice(start);
+  const endMatch = after.match(/13\.3[\s\S]{0,30}(שלב|הכרזה|זוכים)/);
+  const section = endMatch ? after.slice(0, endMatch.index) : after.slice(0, 16000);
+
+  const rows = [];
+  const re = /(13\.2\.\d+\.\d+)\s*\.?\s*([\s\S]*?)(?=13\.2\.\d+\.\d+|13\.3|$)/g;
+  let m;
+  while ((m = re.exec(section)) !== null) {
+    const id = m[1];
+    const body = String(m[2] || '').trim();
+    if (!body) continue;
+
+    const firstLine = body
+      .split('\n')
+      .map(x => x.trim())
+      .filter(Boolean)
+      .find(x => x.length > 1) || '';
+
+    const title = firstLine.replace(/^[-–•\s]+/, '').slice(0, 90);
+    const scoreMatch =
+      body.match(/(?:עד|מקסימאלי|מקסימום|סה"כ)[^0-9]{0,20}(\d{1,3}(?:\.\d+)?)/) ||
+      body.match(/(\d{1,3}(?:\.\d+)?)\s*נק[\'"]?/);
+    const score = scoreMatch ? parseFloat(scoreMatch[1]) : null;
+
+    rows.push({
+      l: `סעיף ${id}${title ? ` — ${title}` : ''}`,
+      detail: body.replace(/\s*\n\s*/g, ' ').replace(/[ ]{2,}/g, ' ').trim(),
+      w: Number.isFinite(score) ? `${score}%` : '',
+      m: Number.isFinite(score) ? score : 0
+    });
+  }
+  return rows;
+}
+
+function classifyScoringPayload(raw){
+  const q = raw?.qualityScoring;
+  const p = raw?.priceScoring;
+  const hasAltQuality = Array.isArray(raw?.qualityCriteria) && raw.qualityCriteria.length > 0;
+  const hasAltPrice = Array.isArray(raw?.priceCriteria) && raw.priceCriteria.length > 0;
+
+  const qualityType = Array.isArray(q) ? 'array' : (q === null ? 'null' : typeof q);
+  const priceType = Array.isArray(p) ? 'array' : (p === null ? 'null' : typeof p);
+
+  const qualityLen = Array.isArray(q) ? q.length : 0;
+  const priceLen = Array.isArray(p) ? p.length : 0;
+
+  if (qualityLen > 0 || priceLen > 0) {
+    return {
+      status: 'ok',
+      reason: 'Scoring arrays present',
+      qualityType, priceType, qualityLen, priceLen, hasAltQuality, hasAltPrice
+    };
+  }
+
+  if (hasAltQuality || hasAltPrice) {
+    return {
+      status: 'shape_mismatch',
+      reason: 'Alternative scoring keys present',
+      qualityType, priceType, qualityLen, priceLen, hasAltQuality, hasAltPrice
+    };
+  }
+
+  if ((q && !Array.isArray(q)) || (p && !Array.isArray(p))) {
+    return {
+      status: 'type_mismatch',
+      reason: 'Scoring keys exist but wrong type',
+      qualityType, priceType, qualityLen, priceLen, hasAltQuality, hasAltPrice
+    };
+  }
+
+  return {
+    status: 'missing',
+    reason: 'No scoring data returned by AI',
+    qualityType, priceType, qualityLen, priceLen, hasAltQuality, hasAltPrice
+  };
+}
+
+function normalizeScoringItems(result){
+  const rawQuality = Array.isArray(result.qualityScoring)
+    ? result.qualityScoring
+    : Array.isArray(result.qualityCriteria)
+      ? result.qualityCriteria
+      : [];
+
+  const qualityScoring = rawQuality
+    .map((q, idx) => {
+      const label = q?.l || q?.label || q?.name || `קריטריון ${idx + 1}`;
+      const detail = q?.detail || q?.description || '';
+      const wRaw = q?.w ?? q?.weight ?? '';
+      const wNum = parseInt(String(wRaw).replace('%', ''), 10);
+      const mRaw = q?.m ?? q?.max ?? q?.maxScore ?? '';
+      const mNum = parseInt(String(mRaw), 10);
+      return {
+        l: String(label).trim(),
+        detail: String(detail || '').trim(),
+        w: Number.isFinite(wNum) ? `${wNum}%` : String(wRaw || '').trim(),
+        m: Number.isFinite(mNum) ? mNum : (Number.isFinite(wNum) ? wNum : 0)
+      };
+    })
+    .filter(q => q.l);
+
+  const rawPrice = Array.isArray(result.priceScoring)
+    ? result.priceScoring
+    : Array.isArray(result.priceCriteria)
+      ? result.priceCriteria
+      : [];
+
+  const priceScoring = rawPrice
+    .map((p, idx) => {
+      const label = p?.l || p?.label || p?.name || `קטגוריה ${idx + 1}`;
+      const wRaw = p?.w ?? p?.weight ?? '';
+      const wNum = parseInt(String(wRaw).replace('%', ''), 10);
+      return {
+        l: String(label).trim(),
+        w: Number.isFinite(wNum) ? `${wNum}%` : String(wRaw || '').trim()
+      };
+    })
+    .filter(p => p.l);
+
+  return { qualityScoring, priceScoring };
+}
+
 function handleFileDrop(e){
   e.preventDefault();
   document.getElementById('uploadZone').classList.remove('drag');
@@ -157,6 +293,7 @@ async function runAIAnalysis(){
     progText.textContent = 'קורא את הקובץ...';
     progBar.style.width = '15%';
     const { fullText, text, truncated } = await extractFileText(file);
+    const section132Scoring = extractSection132Scoring(fullText);
     uploadedFileContent = text;
 
     if(text.trim().length < 50){
@@ -191,6 +328,23 @@ async function runAIAnalysis(){
     }
 
     const result = analysisResult.value;
+    const scoringDiagnosis = classifyScoringPayload(result);
+    window.__lastAnalysisRaw = result;
+    window.__lastScoringDiagnosis = scoringDiagnosis;
+    console.group('AI scoring diagnosis');
+    console.log('Diagnosis:', scoringDiagnosis);
+    console.log('Raw qualityScoring:', result?.qualityScoring);
+    console.log('Raw priceScoring:', result?.priceScoring);
+    console.log('Alt qualityCriteria:', result?.qualityCriteria);
+    console.log('Alt priceCriteria:', result?.priceCriteria);
+    console.log('Section 13.2 fallback rows:', section132Scoring?.length || 0);
+    console.groupEnd();
+
+    if ((!Array.isArray(result.qualityScoring) || result.qualityScoring.length === 0) && section132Scoring.length > 0) {
+      result.qualityScoring = section132Scoring;
+      result.scoringNote = (result.scoringNote ? `${result.scoringNote} ` : '') + 'מדדי האיכות הושלמו מסעיף 13.2 במסמך.';
+    }
+
     // Attach appendices (may have failed independently)
     if(appendicesResult.status === 'fulfilled' && appendicesResult.value?.appendices){
       result.appendices = appendicesResult.value.appendices;
@@ -227,35 +381,47 @@ function showAIResult(result){
   document.getElementById('aiTenderOrg').textContent = (result.orgName||'') + (result.tenderNumber?' | '+result.tenderNumber:'');
   document.getElementById('aiAnalysisDate').textContent = 'נותח: '+new Date().toLocaleDateString('he-IL');
 
+  const normalized = normalizeScoringItems(result);
+  result.qualityScoring = normalized.qualityScoring;
+  result.priceScoring = normalized.priceScoring;
+
   // Add to TENDERS list
   const existing = TENDERS.find(t=>t.name===result.tenderName);
+  const mappedTender = {
+    name:result.tenderName||uploadedFileName.replace(/\.[^.]+$/,''),
+    org:result.orgName||'',
+    number:result.tenderNumber||'',
+    type:result.type||'',
+    status:+result.daysLeft<=3?'urgent':+result.daysLeft<=14?'soon':'ok',
+    daysLeft:+result.daysLeft||0,
+    score:+result.score||0,
+    value:result.value||'',
+    duration:result.duration||'',
+    winners:result.winners||'',
+    submitDeadline:result.submitDeadline||'',
+    questionsDeadline:result.timeline&&result.timeline[0]?result.timeline[0].date:'',
+    tenderBond:result.tenderBond||'',
+    performanceBond:result.performanceBond||'',
+    scope:result.scope||'',
+    highlights:result.highlights||[],
+    flags:result.flags||[],
+    thresholds:[
+      ...(result.adminThresholds||[]),
+      ...((result.professionalThresholds||[]).map(p=>`${p.field}: ${p.detail}`))
+    ],
+    qualityScoring:result.qualityScoring||[],
+    priceScoring:result.priceScoring||[],
+    teamReq:result.teamReq||[],
+    insurance:result.insurance||'',
+    liabilityBond:result.liabilityBond||'',
+    tourDate:result.tourDate||'',
+    openDate:result.openDate||''
+  };
+
   if(!existing){
     const newTender = {
       id:TENDERS.length,
-      name:result.tenderName||uploadedFileName.replace(/\.[^.]+$/,''),
-      org:result.orgName||'',
-      number:result.tenderNumber||'',
-      type:result.type||'',
-      status:+result.daysLeft<=3?'urgent':+result.daysLeft<=14?'soon':'ok',
-      daysLeft:+result.daysLeft||0,
-      score:+result.score||0,
-      value:result.value||'',
-      duration:result.duration||'',
-      winners:result.winners||'',
-      submitDeadline:result.submitDeadline||'',
-      questionsDeadline:result.timeline&&result.timeline[0]?result.timeline[0].date:'',
-      tenderBond:result.tenderBond||'',
-      performanceBond:result.performanceBond||'',
-      scope:result.scope||'',
-      highlights:result.highlights||[],
-      flags:result.flags||[],
-      thresholds:result.thresholds||[],
-      qualityScoring:result.qualityScoring||[],
-      teamReq:result.teamReq||[],
-      insurance:result.insurance||'',
-      liabilityBond:result.liabilityBond||'',
-      tourDate:result.tourDate||'',
-      openDate:result.openDate||''
+      ...mappedTender
     };
     TENDERS.push(newTender);
     saveTender(newTender);
@@ -266,7 +432,12 @@ function showAIResult(result){
     renderDashboard();
     document.getElementById('simOpenTenderBtn').onclick=()=>openTenderModal(newTender.id);
   } else {
+    Object.assign(existing, mappedTender);
+    saveTender(existing);
     currentAnalysisIdx = existing.id;
+    renderTenderTable();
+    renderTenderCards();
+    renderDashboard();
   }
 
   switchAITab('overview', document.querySelector('#aiResultTabs .tab'));
@@ -365,12 +536,23 @@ function switchAITab(tab, el){
     /* הערה כללית */
     const noteHtml = r.scoringNote ? `<div class="alert ag2" style="margin-bottom:10px;font-size:12px">📊 ${r.scoringNote}</div>` : '';
 
-    /* טבלת מדדי איכות */
+    /* תצוגת סעיפים: פירוט + ניקוד */
     const qualityHtml = qs.length ? `
-      <div class="stl">מדדי איכות</div>
-      <table class="atable"><thead><tr><th style="width:30px">מס'</th><th>מדד איכות</th><th>פירוט הניקוד</th><th style="width:60px">משקל</th></tr></thead><tbody>
-        ${qs.map((q,i)=>`<tr><td style="text-align:center;font-weight:700">${i+1}</td><td style="font-weight:600">${q.l}</td><td style="font-size:11.5px;line-height:1.5;color:var(--s2)">${q.detail||''}</td><td style="font-family:'IBM Plex Mono',monospace;font-weight:700;text-align:center">${q.w}</td></tr>`).join('')}
-      </tbody></table>` : '';
+      <div class="stl">מדדי איכות (חלוקה לסעיפים)</div>
+      ${qs.map((q,i)=>`
+        <div style="display:grid;grid-template-columns:1fr 90px;gap:10px;border:1px solid var(--s5);border-radius:10px;padding:10px 11px;margin-bottom:8px;background:var(--w)">
+          <div>
+            <div style="font-weight:700;font-size:12.5px;color:var(--navy);margin-bottom:4px">${i+1}. ${q.l}</div>
+            <div style="font-size:11.5px;line-height:1.55;color:var(--s2)">${q.detail||'—'}</div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center">
+            <div style="text-align:center;background:var(--grn-light);border:1px solid var(--grn-border);border-radius:9px;padding:8px 6px;min-width:74px">
+              <div style="font-size:9px;color:var(--s3);margin-bottom:1px">ניקוד</div>
+              <div style="font-family:'IBM Plex Mono',monospace;font-weight:800;font-size:13px;color:var(--grn)">${formatScoreDisplay(q)}</div>
+            </div>
+          </div>
+        </div>
+      `).join('')}` : '';
 
     /* טבלת ניקוד מחיר */
     const priceHtml = (r.priceScoring&&r.priceScoring.length) ? `
