@@ -292,10 +292,16 @@ function _renderTmAppBody(body, normalized, pdfUrl, tid){
   }
 }
 
+let _tmFilteredText = null; // cached filteredText for tender modal
+
 function renderTmAppendixTab(body, t){
   body.innerHTML = '<div style="text-align:center;padding:20px"><span class="spn"></span> טוען נספחים...</div>';
   const tid = tmId;
-  loadAppendices(tid).then(async appendices => {
+  Promise.all([
+    loadAppendices(tid),
+    loadFilteredText(tid)
+  ]).then(async ([appendices, ft]) => {
+    _tmFilteredText = ft || null;
     const normalized = Array.isArray(appendices) && appendices.length
       ? appendices
       : (Array.isArray(t.appendices) && t.appendices.length ? t.appendices : []);
@@ -328,7 +334,6 @@ function renderTmDynApp(idx){
   currentDynAppIdx = idx;
   const ac = document.getElementById('tmAppContent');
   if(!ac || !tmDynApps || !tmDynApps[idx]) return;
-  // Reuse the shared builder from analysis.js, but with modal-specific context
   const app = tmDynApps[idx];
   const t = TENDERS[tmId];
   const savedResult = currentAIResult;
@@ -342,6 +347,19 @@ function renderTmDynApp(idx){
   ac.innerHTML = buildDynAppHtml(app, idx, tmId);
   // Restore
   if(savedResult) currentAIResult = savedResult;
+
+  // Lazy-load real fields from AI if still using defaults
+  const ft = _tmFilteredText || currentAIResult?._filteredText;
+  if(app._defaultFields && ft && typeof fetchAppendixFields === 'function'){
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'text-align:center;padding:12px;font-size:12px;color:var(--s2)';
+    overlay.innerHTML = '<span class="spn"></span> טוען שדות ספציפיים מהמכרז...';
+    ac.prepend(overlay);
+
+    fetchAppendixFields(app, ft, tmId).then(() => {
+      if(currentDynAppIdx === idx) renderTmDynApp(idx);
+    });
+  }
 }
 
 function buildOverviewTab(t){

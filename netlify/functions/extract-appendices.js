@@ -19,6 +19,53 @@ function loadEnvKey() {
   return null;
 }
 
+/* ── Shared Gemini call helper ── */
+async function callGemini(apiKey, prompt, maxTokens) {
+  const t0 = Date.now();
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.1,
+          maxOutputTokens: maxTokens,
+          responseMimeType: 'application/json',
+          thinkingConfig: { thinkingBudget: 0 }
+        }
+      })
+    }
+  );
+  const ms = Date.now() - t0;
+  console.log('Gemini fetch:', ms, 'ms, status:', response.status);
+  return response;
+}
+
+function parseGeminiJson(response, data) {
+  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!rawText) return null;
+  try {
+    return JSON.parse(rawText);
+  } catch {
+    const match = rawText.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    return JSON.parse(match[0]);
+  }
+}
+
+function geminiErrorResponse(headers, response, errText) {
+  let msg = 'AI API error: ' + response.status;
+  if (response.status === 429) msg = 'חריגת מכסה — נסה שוב בעוד דקה';
+  else if (response.status === 503) msg = 'השרת עמוס — נסה שוב בעוד רגע';
+  return {
+    statusCode: response.status === 429 ? 429 : response.status === 503 ? 503 : 502,
+    headers,
+    body: JSON.stringify({ error: msg })
+  };
+}
+
 exports.handler = async function(event) {
   const headers = {
     'Content-Type': 'application/json',
@@ -29,7 +76,6 @@ exports.handler = async function(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers, body: '' };
   }
-
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
@@ -49,14 +95,80 @@ exports.handler = async function(event) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Invalid JSON: ' + e.message }) };
   }
 
+  /* ═══════════════════════════════════════════════
+     MODE: fields — extract fields for ONE appendix
+     ═══════════════════════════════════════════════ */
+  if (body.mode === 'fields') {
+    const { title, hebrewLabel, type, description, isTable, filteredText, companyData } = body;
+    if (!filteredText || !title) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'Missing title or filteredText' }) };
+    }
+
+    const companyJson = companyData ? JSON.stringify(companyData) : '{}';
+
+    const prompt = `אתה מומחה מכרזים. להלן קטעים ממסמך מכרז שמכילים נספחים.
+
+משימתך: חלץ את **שדות הטופס** עבור הנספח הבא בלבד:
+- כותרת: ${title}
+- סימון: נספח ${hebrewLabel || ''}
+- סוג: ${type}
+- תיאור: ${description || ''}
+- טבלה: ${isTable ? 'כן' : 'לא'}
+
+נתוני המציע:
+${companyJson}
+
+קטעי המכרז:
+${filteredText}
+
+החזר JSON בלבד:
+{"fields":[{"key":"field_id","label":"תווית בעברית","type":"text","required":true}],"rows":[{"field_id":"ערך ממולא"}],"isTable":${isTable ? 'true' : 'false'}}
+
+הנחיות:
+- חלץ רק שדות שמופיעים או משתמעים מהנספח הזה במסמך.
+- type: text|number|date|boolean|textarea|signature
+- מלא rows אוטומטית מנתוני המציע (שם, כתובת, ח.פ וכו'). השאר "" לשדות לא ידועים.
+- אם הנספח הוא טבלה — החזר isTable:true ושורת דוגמה אחת ב-rows.
+- מקסימום 8 שדות. ענה בקצרה. JSON בלבד.`;
+
+    console.log('Fields mode for:', title, '| prompt:', prompt.length, 'chars');
+
+    try {
+      const response = await callGemini(apiKey, prompt, 2048);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error('Gemini error:', response.status, errText.slice(0, 200));
+        return geminiErrorResponse(headers, response, errText);
+      }
+
+      const data = await response.json();
+      const result = parseGeminiJson(response, data);
+      if (!result) {
+        return { statusCode: 502, headers, body: JSON.stringify({ error: 'Invalid AI response' }) };
+      }
+
+      const fields = Array.isArray(result.fields) ? result.fields : [];
+      const rows = Array.isArray(result.rows) ? result.rows : [];
+      const resultIsTable = typeof result.isTable === 'boolean' ? result.isTable : isTable;
+
+      console.log('Fields extracted:', fields.length, 'for', title);
+      return { statusCode: 200, headers, body: JSON.stringify({ fields, rows, isTable: resultIsTable }) };
+
+    } catch (err) {
+      console.error('Fields error:', err);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: 'Server error: ' + err.message }) };
+    }
+  }
+
+  /* ═══════════════════════════════════════════════
+     MODE: identify (default) — find all appendices
+     ═══════════════════════════════════════════════ */
   const { text, fileName } = body;
   if (!text || text.length < 20) {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'Text too short or missing' }) };
   }
 
-  // Filter by "נספח" keyword. Two tiers:
-  //   Title pages: "נספח" appears in the first 200 chars → full page text
-  //   Reference pages: "נספח" appears later → short excerpt only
   const APOSTROPHE_RE = /[\u2019\u05F3\u02BC\u2018\u0060\u00B4]/g;
   const normalizedText = text.replace(APOSTROPHE_RE, "'");
   const lines = normalizedText.split('\n');
@@ -101,9 +213,8 @@ exports.handler = async function(event) {
     filteredText = normalizedText.slice(-15000);
   }
 
-  console.log('Appendix filter:', titleCount, 'title pages,', refCount, 'reference pages, filtered text:', filteredText.length, 'chars (from', text.length, 'total,', lines.length, 'lines)');
+  console.log('Identify mode:', titleCount, 'title pages,', refCount, 'ref pages, filtered:', filteredText.length, 'chars');
 
-  // Identification-only prompt — no fields, minimal output per appendix
   const prompt = `זהה את כל הנספחים שהמציע נדרש להגיש במכרז הבא.
 
 נספח = טופס/הצהרה/תצהיר/רשימה שהמציע צריך למלא ולהגיש.
@@ -120,62 +231,23 @@ type: experience|team|declarations|financial|methodology|pricing|references|conf
 isTable: true רק לטבלאות עם שורות חוזרות.
 אל תמציא נספחים. החזר רק מה שמופיע במסמך.`;
 
-  const model = 'gemini-2.5-flash';
   console.log('Prompt length:', prompt.length, 'chars');
 
   try {
-    const t0 = Date.now();
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 4096,
-            responseMimeType: 'application/json',
-            thinkingConfig: { thinkingBudget: 0 }
-          }
-        })
-      }
-    );
-
-    const fetchMs = Date.now() - t0;
-    console.log('Gemini fetch completed in', fetchMs, 'ms, status:', response.status);
+    const response = await callGemini(apiKey, prompt, 4096);
 
     if (!response.ok) {
       const errText = await response.text();
       console.error('Gemini error:', response.status, errText.slice(0, 200));
-      let msg = 'AI API error: ' + response.status;
-      if (response.status === 429) msg = 'חריגת מכסה — נסה שוב בעוד דקה';
-      else if (response.status === 503) msg = 'השרת עמוס — נסה שוב בעוד רגע';
-      return {
-        statusCode: response.status === 429 ? 429 : response.status === 503 ? 503 : 502,
-        headers,
-        body: JSON.stringify({ error: msg })
-      };
+      return geminiErrorResponse(headers, response, errText);
     }
 
     const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!rawText) {
-      return { statusCode: 502, headers, body: JSON.stringify({ error: 'Empty AI response' }) };
+    const result = parseGeminiJson(response, data);
+    if (!result) {
+      return { statusCode: 502, headers, body: JSON.stringify({ error: 'Invalid AI response' }) };
     }
 
-    let result;
-    try {
-      result = JSON.parse(rawText);
-    } catch {
-      const match = rawText.match(/\{[\s\S]*\}/);
-      if (!match) {
-        return { statusCode: 502, headers, body: JSON.stringify({ error: 'Invalid JSON from AI' }) };
-      }
-      result = JSON.parse(match[0]);
-    }
-
-    // Sanitize appendices — fields will be generated client-side
     const appendices = Array.isArray(result.appendices) ? result.appendices : [];
     appendices.forEach((app, i) => {
       if (!app.id) app.id = 'app_' + i;
@@ -191,7 +263,8 @@ isTable: true רק לטבלאות עם שורות חוזרות.
     });
 
     console.log('Extracted', appendices.length, 'appendices');
-    return { statusCode: 200, headers, body: JSON.stringify({ appendices }) };
+    // Return filteredText so client can use it for per-appendix field calls
+    return { statusCode: 200, headers, body: JSON.stringify({ appendices, filteredText }) };
 
   } catch (err) {
     console.error('Function error:', err);

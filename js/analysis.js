@@ -387,10 +387,61 @@ function enrichAppendixFields(appendices){
   return appendices.map(app => {
     if(!app.fields || app.fields.length === 0){
       app.fields = APPENDIX_TYPE_FIELDS[app.type] || APPENDIX_TYPE_FIELDS.custom;
+      app._defaultFields = true; // flag: needs AI field extraction
     }
     if(!Array.isArray(app.rows)) app.rows = [];
     return app;
   });
+}
+
+/* ── Lazy per-appendix field extraction ── */
+const _fieldFetchInProgress = {};
+
+async function fetchAppendixFields(app, filteredText, tenderId){
+  const key = `${tenderId}_${app.id}`;
+  if(_fieldFetchInProgress[key]) return; // already fetching
+  _fieldFetchInProgress[key] = true;
+
+  try {
+    const response = await fetch('/.netlify/functions/extract-appendices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mode: 'fields',
+        title: app.title,
+        hebrewLabel: app.hebrewLabel,
+        type: app.type,
+        description: app.description,
+        isTable: app.isTable,
+        filteredText,
+        companyData: { bidder: BIDDER, team: teamMembers }
+      })
+    });
+
+    if(!response.ok){
+      console.warn('Field fetch failed for', app.title, response.status);
+      return;
+    }
+
+    const data = await response.json();
+    if(data.fields && data.fields.length > 0){
+      app.fields = data.fields;
+      if(data.rows && data.rows.length > 0) app.rows = data.rows;
+      if(typeof data.isTable === 'boolean') app.isTable = data.isTable;
+    }
+    delete app._defaultFields;
+    app._fieldsLoaded = true;
+
+    // Persist updated appendices
+    if(tenderId >= 0){
+      const apps = currentAIResult?.appendices || tmDynApps || [];
+      saveAppendices(tenderId, apps);
+    }
+  } catch(err){
+    console.error('fetchAppendixFields error:', err.message);
+  } finally {
+    delete _fieldFetchInProgress[key];
+  }
 }
 
 /* ── Call Netlify Function → Appendix extraction ── */
@@ -409,6 +460,8 @@ async function callAIForAppendices(content, fileName){
       const data = await response.json();
       // Enrich with default fields client-side (keeps server response fast)
       if(data.appendices) data.appendices = enrichAppendixFields(data.appendices);
+      // Store filteredText for per-appendix field extraction
+      if(data.filteredText) data._filteredText = data.filteredText;
       return data;
     }
 
@@ -505,6 +558,7 @@ async function runAIAnalysis(){
     // Attach appendices (may have failed independently)
     if(appendicesResult.status === 'fulfilled' && appendicesResult.value?.appendices){
       result.appendices = appendicesResult.value.appendices;
+      result._filteredText = appendicesResult.value._filteredText || '';
       console.log('Appendix extraction OK:', result.appendices.length, 'appendices found');
     } else {
       const reason = appendicesResult.status === 'rejected'
@@ -521,9 +575,10 @@ async function runAIAnalysis(){
     currentAIResult = result;
     showAIResult(result);
 
-    // Persist appendices after tender is created (always overwrite, even if empty)
+    // Persist appendices and filteredText after tender is created
     if(currentAnalysisIdx >= 0){
       saveAppendices(currentAnalysisIdx, result.appendices);
+      if(result._filteredText) saveFilteredText(currentAnalysisIdx, result._filteredText);
     }
 
   } catch(err) {
@@ -1005,6 +1060,19 @@ function renderDynAppContent(idx){
   const app = apps[idx];
   if(!app){ ac.innerHTML = ''; return; }
   ac.innerHTML = buildDynAppHtml(app, idx, currentAnalysisIdx);
+
+  // Lazy-load real fields from AI if still using defaults
+  if(app._defaultFields && currentAIResult?._filteredText){
+    const overlay = document.createElement('div');
+    overlay.id = 'fieldLoadingOverlay';
+    overlay.style.cssText = 'text-align:center;padding:12px;font-size:12px;color:var(--s2)';
+    overlay.innerHTML = '<span class="spn"></span> טוען שדות ספציפיים מהמכרז...';
+    ac.prepend(overlay);
+
+    fetchAppendixFields(app, currentAIResult._filteredText, currentAnalysisIdx).then(() => {
+      if(currentDynAppIdx === idx) renderDynAppContent(idx);
+    });
+  }
 }
 
 function buildDynAppHtml(app, idx, tenderId){

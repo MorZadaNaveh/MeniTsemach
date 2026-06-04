@@ -266,11 +266,24 @@ function saveAppendices(tenderId, appendices) {
     .catch(e => console.error('Save appendices failed:', e.message));
 }
 
+function saveFilteredText(tenderId, filteredText) {
+  storageService.saveAppendices(tenderId + '_ft', filteredText)
+    .catch(e => console.error('Save filteredText failed:', e.message));
+}
+
 async function loadAppendices(tenderId) {
   try {
     return await storageService.getAppendices(tenderId);
   } catch (e) {
     console.error('Load appendices failed:', e.message);
+    return null;
+  }
+}
+
+async function loadFilteredText(tenderId) {
+  try {
+    return await storageService.getAppendices(tenderId + '_ft');
+  } catch (e) {
     return null;
   }
 }
