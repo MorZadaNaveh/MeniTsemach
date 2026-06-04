@@ -6,4 +6,4 @@
   node_bundler = "esbuild"
 
 [dev]
-  functionsTimeout = 60
+  functionsTimeout = 120

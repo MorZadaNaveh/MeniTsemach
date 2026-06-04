@@ -7,6 +7,55 @@ if(typeof pdfjsLib!=='undefined'){
 
 let uploadedFiles = [];
 
+/* ── IndexedDB helpers for PDF blob persistence ── */
+const _PDF_DB_NAME = 'MazkirPdfStore';
+const _PDF_DB_VERSION = 1;
+const _PDF_STORE_NAME = 'pdfs';
+
+function _openPdfDb(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(_PDF_DB_NAME, _PDF_DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(_PDF_STORE_NAME)) {
+        db.createObjectStore(_PDF_STORE_NAME);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function savePdfBlob(tenderId, blob){
+  try {
+    const db = await _openPdfDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(_PDF_STORE_NAME, 'readwrite');
+      tx.objectStore(_PDF_STORE_NAME).put(blob, 'tender_' + tenderId);
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onerror = () => { db.close(); reject(tx.error); };
+    });
+  } catch(e) { console.warn('savePdfBlob failed:', e.message); }
+}
+
+async function loadPdfBlob(tenderId){
+  try {
+    const db = await _openPdfDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(_PDF_STORE_NAME, 'readonly');
+      const req = tx.objectStore(_PDF_STORE_NAME).get('tender_' + tenderId);
+      req.onsuccess = () => { db.close(); resolve(req.result || null); };
+      req.onerror = () => { db.close(); reject(req.error); };
+    });
+  } catch(e) { console.warn('loadPdfBlob failed:', e.message); return null; }
+}
+
+async function getPdfBlobUrl(tenderId){
+  const blob = await loadPdfBlob(tenderId);
+  if (!blob) return null;
+  return URL.createObjectURL(blob);
+}
+
 function formatScoreDisplay(item){
   const raw = Number(item?.m);
   const hasRaw = Number.isFinite(raw) && raw > 0;
@@ -217,6 +266,8 @@ async function extractFileText(file){
       const pageText = tc.items.map(it=>it.str).join(' ');
       fullText += pageText + '\n';
     }
+    // Normalize apostrophe-like characters for consistent downstream matching
+    fullText = fullText.replace(/[\u2019\u05F3\u02BC\u2018\u00B4]/g, "'");
     const truncated = smartTruncate(fullText);
     return { fullText, ...truncated };
   }
@@ -263,13 +314,87 @@ async function callAIForAnalysis(content, fileName, wasTruncated){
   }
 }
 
+/* ── Default fields by appendix type (generated client-side) ── */
+const APPENDIX_TYPE_FIELDS = {
+  declarations: [
+    {key:'signer_name',label:'שם המצהיר',type:'text',required:true},
+    {key:'signer_role',label:'תפקיד',type:'text',required:true},
+    {key:'id_number',label:'ת.ז.',type:'text',required:true},
+    {key:'date',label:'תאריך',type:'date',required:true},
+    {key:'signature',label:'חתימה',type:'signature',required:true}
+  ],
+  experience: [
+    {key:'project_name',label:'שם הפרויקט',type:'text',required:true},
+    {key:'client',label:'שם הלקוח',type:'text',required:true},
+    {key:'year',label:'שנה',type:'number',required:true},
+    {key:'scope',label:'היקף (₪)',type:'number',required:false},
+    {key:'description',label:'תיאור',type:'textarea',required:false}
+  ],
+  team: [
+    {key:'name',label:'שם',type:'text',required:true},
+    {key:'role',label:'תפקיד מוצע',type:'text',required:true},
+    {key:'education',label:'השכלה',type:'text',required:false},
+    {key:'experience_years',label:'שנות ניסיון',type:'number',required:true},
+    {key:'description',label:'ניסיון רלוונטי',type:'textarea',required:false}
+  ],
+  financial: [
+    {key:'item',label:'סעיף',type:'text',required:true},
+    {key:'amount',label:'סכום (₪)',type:'number',required:true},
+    {key:'notes',label:'הערות',type:'text',required:false}
+  ],
+  methodology: [
+    {key:'section',label:'נושא',type:'text',required:true},
+    {key:'content',label:'תוכן',type:'textarea',required:true}
+  ],
+  pricing: [
+    {key:'item',label:'פריט/שירות',type:'text',required:true},
+    {key:'unit_price',label:'מחיר ליחידה',type:'number',required:true},
+    {key:'quantity',label:'כמות',type:'number',required:false},
+    {key:'total',label:'סה"כ',type:'number',required:true}
+  ],
+  references: [
+    {key:'company',label:'שם הארגון',type:'text',required:true},
+    {key:'contact',label:'איש קשר',type:'text',required:true},
+    {key:'phone',label:'טלפון',type:'text',required:true},
+    {key:'project',label:'פרויקט',type:'text',required:false}
+  ],
+  confidentiality: [
+    {key:'signer_name',label:'שם החותם',type:'text',required:true},
+    {key:'company',label:'שם החברה',type:'text',required:true},
+    {key:'date',label:'תאריך',type:'date',required:true},
+    {key:'signature',label:'חתימה',type:'signature',required:true}
+  ],
+  conflict: [
+    {key:'signer_name',label:'שם המצהיר',type:'text',required:true},
+    {key:'details',label:'פירוט',type:'textarea',required:false},
+    {key:'date',label:'תאריך',type:'date',required:true},
+    {key:'signature',label:'חתימה',type:'signature',required:true}
+  ],
+  insurance: [
+    {key:'insurer',label:'חברת ביטוח',type:'text',required:true},
+    {key:'policy_number',label:'מספר פוליסה',type:'text',required:true},
+    {key:'coverage',label:'סכום כיסוי',type:'number',required:true},
+    {key:'expiry',label:'תוקף',type:'date',required:true}
+  ],
+  custom: [
+    {key:'field1',label:'שדה 1',type:'text',required:false},
+    {key:'field2',label:'שדה 2',type:'text',required:false},
+    {key:'notes',label:'הערות',type:'textarea',required:false}
+  ]
+};
+
+function enrichAppendixFields(appendices){
+  return appendices.map(app => {
+    if(!app.fields || app.fields.length === 0){
+      app.fields = APPENDIX_TYPE_FIELDS[app.type] || APPENDIX_TYPE_FIELDS.custom;
+    }
+    if(!Array.isArray(app.rows)) app.rows = [];
+    return app;
+  });
+}
+
 /* ── Call Netlify Function → Appendix extraction ── */
 async function callAIForAppendices(content, fileName){
-  const companyData = {
-    bidder: BIDDER,
-    team: teamMembers
-  };
-
   const MAX_RETRIES = 3;
   const RETRY_DELAYS = [3000, 6000, 10000];
 
@@ -277,10 +402,15 @@ async function callAIForAppendices(content, fileName){
     const response = await fetch('/.netlify/functions/extract-appendices', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: content, fileName, companyData })
+      body: JSON.stringify({ text: content, fileName })
     });
 
-    if(response.ok) return await response.json();
+    if(response.ok){
+      const data = await response.json();
+      // Enrich with default fields client-side (keeps server response fast)
+      if(data.appendices) data.appendices = enrichAppendixFields(data.appendices);
+      return data;
+    }
 
     const err = await response.json().catch(()=>({error:'Unknown'}));
     const retryable = response.status === 429 || response.status === 503;
@@ -306,6 +436,14 @@ async function runAIAnalysis(){
   const progBar  = document.getElementById('aiProgressBar');
   const file = uploadedFiles[0];
   uploadedFileName = file.name;
+
+  // Retain PDF blob for "Open original" feature
+  if (file.name.toLowerCase().endsWith('.pdf')) {
+    if (uploadedPdfBlobUrl) URL.revokeObjectURL(uploadedPdfBlobUrl);
+    uploadedPdfBlobUrl = URL.createObjectURL(file);
+  } else {
+    uploadedPdfBlobUrl = null;
+  }
 
   try {
     // Step 1: Extract text
@@ -367,8 +505,12 @@ async function runAIAnalysis(){
     // Attach appendices (may have failed independently)
     if(appendicesResult.status === 'fulfilled' && appendicesResult.value?.appendices){
       result.appendices = appendicesResult.value.appendices;
+      console.log('Appendix extraction OK:', result.appendices.length, 'appendices found');
     } else {
-      console.warn('Appendix extraction failed:', appendicesResult.reason || 'No data');
+      const reason = appendicesResult.status === 'rejected'
+        ? appendicesResult.reason?.message || appendicesResult.reason
+        : 'Response missing appendices field';
+      console.error('Appendix extraction FAILED:', reason, appendicesResult);
       result.appendices = [];
     }
 
@@ -435,14 +577,16 @@ function showAIResult(result){
     liabilityBond:result.liabilityBond||'',
     tourDate:result.tourDate||'',
     openDate:result.openDate||'',
+    contact:result.contact||null,
     appendices: Array.isArray(result.appendices) ? result.appendices : []
   };
 
   if(!existing){
     const newTender = {
-      id:TENDERS.length,
+      id:getNextTenderId(),
       ...mappedTender
     };
+    if (uploadedPdfBlobUrl) newTender._pdfBlobUrl = uploadedPdfBlobUrl;
     TENDERS.push(newTender);
     saveTender(newTender);
     currentAnalysisIdx = newTender.id;
@@ -453,11 +597,17 @@ function showAIResult(result){
     document.getElementById('simOpenTenderBtn').onclick=()=>openTenderModal(newTender.id);
   } else {
     Object.assign(existing, mappedTender);
+    if (uploadedPdfBlobUrl) existing._pdfBlobUrl = uploadedPdfBlobUrl;
     saveTender(existing);
     currentAnalysisIdx = existing.id;
     renderTenderTable();
     renderTenderCards();
     renderDashboard();
+  }
+
+  // Persist PDF blob to IndexedDB for "Open original" after refresh
+  if (uploadedFiles[0] && currentAnalysisIdx >= 0) {
+    savePdfBlob(currentAnalysisIdx, uploadedFiles[0]);
   }
 
   switchAITab('overview', document.querySelector('#aiResultTabs .tab'));
@@ -591,21 +741,40 @@ function switchAITab(tab, el){
   }
   else if(tab==='docs'){
     const apps = r.appendices || [];
-    if(!apps.length){
-      body.innerHTML = '<div class="alert ab2" style="font-size:12px">לא זוהו נספחים למילוי במסמך זה.</div>';
-      return;
-    }
+    const renderDocsTab = (pdfUrl) => {
+      const pdfBtn = pdfUrl
+        ? `<button class="btn bo sm" style="margin-bottom:10px" onclick="window.open('${pdfUrl}','_blank')">📄 פתח PDF מקורי</button>`
+        : '';
+      if(!apps.length){
+        body.innerHTML = pdfBtn + '<div class="alert ab2" style="font-size:12px">לא זוהו נספחים למילוי במסמך זה.</div>';
+        return;
+      }
+      body.innerHTML = `
+        ${pdfBtn}
+        <div class="alert ag2" style="margin-bottom:12px">✨ AI זיהה ${apps.length} נספחים וביצע מילוי אוטומטי מנתוני המשרד</div>
+        <div class="atabs" id="aiAppTabsRow" style="flex-wrap:wrap;gap:4px">
+          ${apps.map((app, i) =>
+            `<div class="atab ${i===0?'on':''}" onclick="switchDynAppTab(${i})">${app.title}</div>`
+          ).join('')}
+        </div>
+        <div id="aiAppContent"></div>`;
+      renderDynAppContent(0);
+    };
 
-    // Dynamic appendix tabs from AI extraction
-    body.innerHTML = `
-      <div class="alert ag2" style="margin-bottom:12px">✨ AI זיהה ${apps.length} נספחים וביצע מילוי אוטומטי מנתוני המשרד</div>
-      <div class="atabs" id="aiAppTabsRow" style="flex-wrap:wrap;gap:4px">
-        ${apps.map((app, i) =>
-          `<div class="atab ${i===0?'on':''}" onclick="switchDynAppTab(${i})">${app.title}</div>`
-        ).join('')}
-      </div>
-      <div id="aiAppContent"></div>`;
-    renderDynAppContent(0);
+    if (uploadedPdfBlobUrl) {
+      renderDocsTab(uploadedPdfBlobUrl);
+    } else if (currentAnalysisIdx >= 0) {
+      // Restore PDF blob URL from IndexedDB after refresh
+      renderDocsTab(null); // render immediately without PDF button
+      getPdfBlobUrl(currentAnalysisIdx).then(url => {
+        if (url && aiTab === 'docs') {
+          uploadedPdfBlobUrl = url;
+          renderDocsTab(url);
+        }
+      });
+    } else {
+      renderDocsTab(null);
+    }
   }
 }
 

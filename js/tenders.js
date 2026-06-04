@@ -186,6 +186,52 @@ function filterTenders(f,el){
 function openTenderModal(id){ openTenderModalTab(id,'overview'); }
 function openTenderModalTab(id,tab){ tmId=id; tmTab=tab; tmAppTab='exp'; renderTenderModal(); openModal('tenderModal'); }
 
+function _extractContactDetails(t){
+  const raw = [
+    t?.contact?.email || '',
+    t?.contact?.phone || '',
+    t?.contact?.name || '',
+    t?.contact?.method || '',
+    t?.scope || '',
+    ...(t?.highlights || [])
+  ].join(' ');
+
+  const emailMatch = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  const phoneMatch = raw.match(/(?:\+972[-\s]?|0)\d[\d\-\s]{7,}/);
+  return {
+    email: t?.contact?.email || (emailMatch ? emailMatch[0] : ''),
+    phone: t?.contact?.phone || (phoneMatch ? phoneMatch[0].trim() : ''),
+    name: t?.contact?.name || ''
+  };
+}
+
+function quickApplyToTender(tenderId){
+  const t = TENDERS[tenderId];
+  if(!t) return;
+  const c = _extractContactDetails(t);
+  const subject = encodeURIComponent(`הגשת מועמדות למכרז ${t.number || ''} - ${t.name}`);
+  const body = encodeURIComponent(
+    `שלום${c.name ? ' ' + c.name : ''},\n\n` +
+    `נשמח להגיש מועמדות למכרז "${t.name}" מטעם ${BIDDER.name || 'המשרד שלנו'}.\n` +
+    `נשמח להמשך תיאום.\n\n` +
+    `שם משרד: ${BIDDER.name || ''}\n` +
+    `איש קשר: ${BIDDER.signatory || ''}\n` +
+    `טלפון: ${BIDDER.phone || ''}\n` +
+    `מייל: ${BIDDER.email || ''}\n`
+  );
+
+  if(c.email){
+    window.open(`mailto:${c.email}?subject=${subject}&body=${body}`, '_blank');
+    return;
+  }
+  if(c.phone){
+    const normalized = c.phone.replace(/[^\d+]/g, '');
+    window.open(`tel:${normalized}`, '_self');
+    return;
+  }
+  alert('לא נמצאו פרטי התקשרות במכרז זה. ניתן להוסיף מייל/טלפון בפרטי הקשר ולנסות שוב.');
+}
+
 function renderTenderModal(){
   const t = TENDERS[tmId];
   // Header
@@ -223,28 +269,47 @@ function switchTmTab(tab){ tmTab=tab; renderTenderModal(); }
 /* ── Dynamic appendices in tender modal ── */
 let tmDynApps = null;
 
+function _renderTmAppBody(body, normalized, pdfUrl, tid){
+  const pdfBtn = pdfUrl
+    ? `<button class="btn bo sm" style="margin-bottom:10px" onclick="window.open('${pdfUrl}','_blank')">📄 פתח PDF מקורי</button>`
+    : '';
+
+  if(normalized.length > 0){
+    tmDynApps = normalized;
+    body.innerHTML = `
+      ${pdfBtn}
+      <div class="alert ag2" style="margin-bottom:12px">✨ ${normalized.length} נספחים — ממולאים אוטומטית מנתוני המשרד</div>
+      <div class="atabs" id="tmAppTabsRow" style="flex-wrap:wrap;gap:4px">
+        ${normalized.map((app, i) =>
+          `<div class="atab ${i===0?'on':''}" onclick="switchTmDynApp(${i})">${app.title}</div>`
+        ).join('')}
+      </div>
+      <div id="tmAppContent"></div>`;
+    renderTmDynApp(0);
+  } else {
+    tmDynApps = null;
+    body.innerHTML = pdfBtn + '<div class="alert ab2" style="font-size:12px">לא זוהו נספחים למילוי במכרז זה. העלה את המכרז לניתוח AI כדי לזהות נספחים.</div>';
+  }
+}
+
 function renderTmAppendixTab(body, t){
   body.innerHTML = '<div style="text-align:center;padding:20px"><span class="spn"></span> טוען נספחים...</div>';
-  loadAppendices(tmId).then(appendices => {
+  const tid = tmId;
+  loadAppendices(tid).then(async appendices => {
     const normalized = Array.isArray(appendices) && appendices.length
       ? appendices
       : (Array.isArray(t.appendices) && t.appendices.length ? t.appendices : []);
 
-    if(normalized.length > 0){
-      tmDynApps = normalized;
-      body.innerHTML = `
-        <div class="alert ag2" style="margin-bottom:12px">✨ ${normalized.length} נספחים — ממולאים אוטומטית מנתוני המשרד</div>
-        <div class="atabs" id="tmAppTabsRow" style="flex-wrap:wrap;gap:4px">
-          ${normalized.map((app, i) =>
-            `<div class="atab ${i===0?'on':''}" onclick="switchTmDynApp(${i})">${app.title}</div>`
-          ).join('')}
-        </div>
-        <div id="tmAppContent"></div>`;
-      renderTmDynApp(0);
-    } else {
-      tmDynApps = null;
-      body.innerHTML = '<div class="alert ab2" style="font-size:12px">לא זוהו נספחים למילוי במכרז זה. העלה את המכרז לניתוח AI כדי לזהות נספחים.</div>';
+    // Resolve PDF URL: in-memory blob > IndexedDB > none
+    let pdfUrl = t?._pdfBlobUrl || uploadedPdfBlobUrl || null;
+    if (!pdfUrl && typeof getPdfBlobUrl === 'function') {
+      try {
+        pdfUrl = await getPdfBlobUrl(tid);
+        if (pdfUrl) t._pdfBlobUrl = pdfUrl; // cache for session
+      } catch {}
     }
+
+    _renderTmAppBody(body, normalized, pdfUrl, tid);
   }).catch(() => {
     tmDynApps = null;
     body.innerHTML = '<div class="alert ab2" style="font-size:12px">לא זוהו נספחים למילוי במכרז זה. העלה את המכרז לניתוח AI כדי לזהות נספחים.</div>';
@@ -280,6 +345,11 @@ function renderTmDynApp(idx){
 }
 
 function buildOverviewTab(t){
+  const c = _extractContactDetails(t);
+  const hasContact = Boolean(c.email || c.phone);
+  const contactChip = hasContact
+    ? `${c.email ? `מייל: ${c.email}` : ''}${c.email && c.phone ? ' | ' : ''}${c.phone ? `טלפון: ${c.phone}` : ''}`
+    : 'אין פרטי קשר זמינים במכרז';
   return `
     <div class="agrid">
       <div class="ai"><div class="ail">מועד הגשה</div><div class="aiv" style="color:var(--red);font-weight:700">${t.submitDeadline}</div></div>
@@ -302,7 +372,11 @@ function buildOverviewTab(t){
     <div class="stl">דגשים חשובים</div>
     ${t.highlights.map(h=>`<div class="alert ab2" style="margin-bottom:5px;font-size:11.5px">ℹ️ ${h}</div>`).join('')}
     ${t.flags.length?`<div class="stl" style="color:var(--amb)">⚠ אזהרות</div>${t.flags.map(f=>`<div class="alert aa" style="margin-bottom:5px;font-size:11.5px">⚠️ ${f}</div>`).join('')}`:''}
-    <div style="display:flex;justify-content:flex-end;margin-top:11px">
+    <div class="alert ag2" style="margin-top:8px;margin-bottom:8px;font-size:12px">📬 ${contactChip}</div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:11px">
+      <button class="btn bp sm" onclick="quickApplyToTender(${t.id})" ${hasContact ? '' : 'disabled style="opacity:.6;cursor:not-allowed" title="אין פרטי קשר זמינים"'}>
+        ⚡ הגשה מהירה
+      </button>
       <button class="btn bo sm" onclick="printDocument('overview',${t.id})"><svg width="12" height="12"><use href="#ic-print"/></svg> הדפס</button>
     </div>`;
 }
