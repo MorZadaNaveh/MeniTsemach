@@ -20,8 +20,16 @@ function loadEnvKey() {
 }
 
 /* ── Shared Gemini call helper ── */
-async function callGemini(apiKey, prompt, maxTokens) {
+async function callGemini(apiKey, prompt, maxTokens, thinkingBudget) {
   const t0 = Date.now();
+  const genConfig = {
+    temperature: 0.1,
+    maxOutputTokens: maxTokens,
+    responseMimeType: 'application/json'
+  };
+  if (typeof thinkingBudget === 'number') {
+    genConfig.thinkingConfig = { thinkingBudget };
+  }
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
     {
@@ -29,12 +37,7 @@ async function callGemini(apiKey, prompt, maxTokens) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: maxTokens,
-          responseMimeType: 'application/json',
-          thinkingConfig: { thinkingBudget: 0 }
-        }
+        generationConfig: genConfig
       })
     }
   );
@@ -139,7 +142,7 @@ ${filteredText}
     console.log('Fields mode for:', title, '| prompt:', prompt.length, 'chars');
 
     try {
-      const response = await callGemini(apiKey, prompt, 2048);
+      const response = await callGemini(apiKey, prompt, 2048, 0);
 
       if (!response.ok) {
         const errText = await response.text();
