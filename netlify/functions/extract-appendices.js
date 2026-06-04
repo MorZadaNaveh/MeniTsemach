@@ -47,8 +47,16 @@ async function callGemini(apiKey, prompt, maxTokens, thinkingBudget) {
 }
 
 function parseGeminiJson(response, data) {
-  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  // When thinking is enabled, parts[0] may be the thought and parts[1] the actual text.
+  // Find the last non-thought text part.
+  const parts = data.candidates?.[0]?.content?.parts || [];
+  let rawText = null;
+  for (let i = parts.length - 1; i >= 0; i--) {
+    if (parts[i].text && !parts[i].thought) { rawText = parts[i].text; break; }
+  }
+  if (!rawText && parts.length > 0) rawText = parts[parts.length - 1].text;
   if (!rawText) return null;
+  console.log('parseGeminiJson: parts:', parts.length, 'rawText:', rawText.slice(0, 150));
   try {
     return JSON.parse(rawText);
   } catch {
@@ -242,31 +250,22 @@ isTable: true רק לטבלאות עם שורות חוזרות.
   console.log('Prompt length:', prompt.length, 'chars');
 
   try {
-    // Retry once if Gemini returns 0 appendices but text clearly has them
-    let appendices = [];
-    const MAX_IDENTIFY_ATTEMPTS = 2;
+    const response = await callGemini(apiKey, prompt, 4096, 1024);
 
-    for (let attempt = 0; attempt < MAX_IDENTIFY_ATTEMPTS; attempt++) {
-      const response = await callGemini(apiKey, prompt, 4096);
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error('Gemini error:', response.status, errText.slice(0, 200));
-        return geminiErrorResponse(headers, response, errText);
-      }
-
-      const data = await response.json();
-      const result = parseGeminiJson(response, data);
-      if (!result) {
-        return { statusCode: 502, headers, body: JSON.stringify({ error: 'Invalid AI response' }) };
-      }
-
-      appendices = Array.isArray(result.appendices) ? result.appendices : [];
-
-      if (appendices.length > 0 || titleCount === 0) break;
-      // Gemini returned empty but we know there are title pages — retry
-      console.log('Identify retry: got 0 appendices but', titleCount, 'title pages exist, attempt', attempt + 1);
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Gemini error:', response.status, errText.slice(0, 200));
+      return geminiErrorResponse(headers, response, errText);
     }
+
+    const data = await response.json();
+    const result = parseGeminiJson(response, data);
+    if (!result) {
+      return { statusCode: 502, headers, body: JSON.stringify({ error: 'Invalid AI response' }) };
+    }
+
+    let appendices = Array.isArray(result) ? result : Array.isArray(result.appendices) ? result.appendices : [];
+    console.log('Identify: got', appendices.length, 'appendices, titleCount:', titleCount);
 
     appendices.forEach((app, i) => {
       if (!app.id) app.id = 'app_' + i;
