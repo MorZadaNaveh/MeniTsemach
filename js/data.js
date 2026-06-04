@@ -41,4 +41,11 @@ let currentAnalysisIdx = -1;
 let uploadedFileContent = '';
 let uploadedFileName = '';
 let currentAIResult = null;
+let uploadedPdfBlobUrl = null;
 let isMobile = false;
+
+function getNextTenderId(){
+  if (!Array.isArray(TENDERS) || TENDERS.length === 0) return 0;
+  const maxId = TENDERS.reduce((max, t) => Math.max(max, Number.isFinite(+t.id) ? +t.id : -1), -1);
+  return maxId + 1;
+}

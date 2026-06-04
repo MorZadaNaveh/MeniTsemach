@@ -27,7 +27,7 @@ function saveNewTender(){
   if(!name||!org||!deadline){alert('נא למלא שם, גוף מזמין ותאריך הגשה');return;}
   const daysLeft=Math.max(0,Math.round((new Date(deadline)-new Date())/86400000));
   const nt={
-    id:TENDERS.length,name,org,
+    id:getNextTenderId(),name,org,
     number:document.getElementById('ntNum').value||'TBD',
     type:document.getElementById('ntType').value,
     status:daysLeft<=3?'urgent':daysLeft<=14?'soon':'ok',

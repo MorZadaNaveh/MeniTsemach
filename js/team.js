@@ -1,6 +1,9 @@
 'use strict';
 
 function ensureDemoTeamMembers(){
+  const scope = (typeof getStorageScope === 'function') ? getStorageScope() : 'demo_user';
+  if (scope !== 'demo@mazkir.co.il' && scope !== 'demo_user') return;
+
   const demoMembers = [
     {
       name:'יעל כהן', title:'רו"ח (CPA)', role:'ראש צוות ביקורת',

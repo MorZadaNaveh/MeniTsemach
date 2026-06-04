@@ -13,6 +13,24 @@ const _STORE_URL = '/.netlify/functions/store';
 const _RETRIES = 2;
 const _RETRY_DELAY = 2000;
 
+function _scopeId(){
+  if (typeof getStorageScope === 'function') {
+    const id = getStorageScope();
+    if (id) return id;
+  }
+  return 'demo_user';
+}
+
+function _scopedKey(key){
+  return `${_scopeId()}::${key}`;
+}
+
+function _filterScopedEntries(data, keyPrefix){
+  const scopedPrefix = `${_scopeId()}::${keyPrefix}`;
+  const entries = Object.entries(data || {}).filter(([k]) => k.startsWith(scopedPrefix));
+  return entries.map(([, v]) => v);
+}
+
 async function _transport(action, storeName, key, data) {
   for (let attempt = 0; attempt <= _RETRIES; attempt++) {
     try {
@@ -78,78 +96,94 @@ const storageService = {
   async saveTenderAnalysis(tender) {
     tender.updatedAt = new Date().toISOString();
     if (!tender.createdAt) tender.createdAt = tender.updatedAt;
-    return _set('tenders', 'tender_' + tender.id, tender);
+    return _set('tenders', _scopedKey('tender_' + tender.id), tender);
   },
 
   async getTenderAnalysis(tenderId) {
+    const scoped = await _get('tenders', _scopedKey('tender_' + tenderId));
+    if (scoped) return scoped;
     return _get('tenders', 'tender_' + tenderId);
   },
 
   async listTenderAnalyses() {
     const data = await _getAll('tenders');
-    return Object.values(data).sort((a, b) => a.id - b.id);
+    const scopedValues = _filterScopedEntries(data, 'tender_');
+    if (scopedValues.length > 0) return scopedValues.sort((a, b) => a.id - b.id);
+    // Backward compatibility for legacy unscoped data.
+    return Object.entries(data)
+      .filter(([k]) => k.startsWith('tender_'))
+      .map(([, v]) => v)
+      .sort((a, b) => a.id - b.id);
   },
 
   async deleteTenderAnalysis(tenderId) {
-    return _del('tenders', 'tender_' + tenderId);
+    return _del('tenders', _scopedKey('tender_' + tenderId));
   },
 
   /* ── Office Profile ── */
 
   async saveOfficeProfile(profile) {
-    return _set('company', 'profile', profile);
+    return _set('company', _scopedKey('profile'), profile);
   },
 
   async getOfficeProfile() {
+    const scoped = await _get('company', _scopedKey('profile'));
+    if (scoped) return scoped;
     return _get('company', 'profile');
   },
 
   /* ── Office Documents (Vault) ── */
 
   async saveOfficeDocument(doc) {
-    return _set('vault', 'doc_' + doc.id, doc);
+    return _set('vault', _scopedKey('doc_' + doc.id), doc);
   },
 
   async getOfficeDocuments() {
     const data = await _getAll('vault');
-    return Object.values(data);
+    const scopedValues = _filterScopedEntries(data, 'doc_');
+    if (scopedValues.length > 0) return scopedValues;
+    return Object.entries(data).filter(([k]) => k.startsWith('doc_')).map(([, v]) => v);
   },
 
   async deleteOfficeDocument(docId) {
-    return _del('vault', 'doc_' + docId);
+    return _del('vault', _scopedKey('doc_' + docId));
   },
 
   /* ── Team Members ── */
 
   async saveTeamMember(member, index) {
-    return _set('team', 'member_' + index, member);
+    return _set('team', _scopedKey('member_' + index), member);
   },
 
   async saveAllTeamMembers(members) {
-    return Promise.all(members.map((m, i) => _set('team', 'member_' + i, m)));
+    return Promise.all(members.map((m, i) => _set('team', _scopedKey('member_' + i), m)));
   },
 
   async getTeamMembers() {
     const data = await _getAll('team');
-    return Object.values(data);
+    const scopedValues = _filterScopedEntries(data, 'member_');
+    if (scopedValues.length > 0) return scopedValues;
+    return Object.entries(data).filter(([k]) => k.startsWith('member_')).map(([, v]) => v);
   },
 
   async deleteTeamMember(index) {
-    return _del('team', 'member_' + index);
+    return _del('team', _scopedKey('member_' + index));
   },
 
   /* ── Appendices (per tender) ── */
 
   async saveAppendices(tenderId, appendices) {
-    return _set('appendices', 'tender_' + tenderId, appendices);
+    return _set('appendices', _scopedKey('tender_' + tenderId), appendices);
   },
 
   async getAppendices(tenderId) {
+    const scoped = await _get('appendices', _scopedKey('tender_' + tenderId));
+    if (scoped) return scoped;
     return _get('appendices', 'tender_' + tenderId);
   },
 
   async deleteAppendices(tenderId) {
-    return _del('appendices', 'tender_' + tenderId);
+    return _del('appendices', _scopedKey('tender_' + tenderId));
   }
 };
 
@@ -173,20 +207,16 @@ async function loadAllData() {
       storageService.getOfficeProfile()
     ]);
 
-    if (tenders.length > 0) {
-      TENDERS.length = 0;
-      tenders.forEach(t => TENDERS.push(t));
-    }
+    // Always hydrate from storage (including empty state) to avoid leaking demo
+    // data between users/scopes.
+    TENDERS.length = 0;
+    tenders.forEach(t => TENDERS.push(t));
 
-    if (team.length > 0) {
-      teamMembers.length = 0;
-      team.forEach(m => teamMembers.push(m));
-    }
+    teamMembers.length = 0;
+    team.forEach(m => teamMembers.push(m));
 
-    if (vault.length > 0) {
-      vaultDocs.length = 0;
-      vault.forEach(d => vaultDocs.push(d));
-    }
+    vaultDocs.length = 0;
+    vault.forEach(d => vaultDocs.push(d));
 
     if (profile) {
       Object.assign(BIDDER, profile);

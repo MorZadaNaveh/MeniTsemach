@@ -1,5 +1,31 @@
 'use strict';
 
+const USER_SCOPE_KEY = 'mazkir_user_scope';
+
+function normalizeUserScope(email){
+  const raw = String(email || '').trim().toLowerCase();
+  if(!raw) return 'demo_user';
+  return raw.replace(/[^a-z0-9@._-]/g, '_');
+}
+
+function setStorageScopeFromLogin(){
+  const email = document.getElementById('loginEmail')?.value || '';
+  const scope = normalizeUserScope(email);
+  try {
+    localStorage.setItem(USER_SCOPE_KEY, scope);
+  } catch (_) {}
+  return scope;
+}
+
+function getStorageScope(){
+  try {
+    const saved = localStorage.getItem(USER_SCOPE_KEY);
+    if(saved) return saved;
+  } catch (_) {}
+  const email = document.getElementById('loginEmail')?.value || '';
+  return normalizeUserScope(email);
+}
+
 /* ═════ MOBILE DETECT ═════ */
 function detectMobile(){
   isMobile = window.innerWidth <= 768;
@@ -28,6 +54,7 @@ function togglePw(){
   inp.type = inp.type==='password'?'text':'password';
 }
 function doLogin(){
+  setStorageScopeFromLogin();
   document.getElementById('ls1').style.display='none';
   document.getElementById('ls2').style.display='block';
   const row = document.getElementById('otpRow');
@@ -47,6 +74,7 @@ function showOtpHint(){
   document.getElementById('otpMsg').innerHTML='<span style="color:var(--grn);font-weight:700">קוד לדמו: 1 2 3 4 5 6</span>';
 }
 function enterApp(){
+  if(!getStorageScope()) setStorageScopeFromLogin();
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('appShell').style.display='flex';
   detectMobile();
