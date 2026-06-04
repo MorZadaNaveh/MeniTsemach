@@ -49,9 +49,14 @@ function parseGeminiJson(response, data) {
   try {
     return JSON.parse(rawText);
   } catch {
-    const match = rawText.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    return JSON.parse(match[0]);
+    try {
+      const match = rawText.match(/\{[\s\S]*\}/);
+      if (!match) return null;
+      return JSON.parse(match[0]);
+    } catch (e2) {
+      console.error('JSON fallback parse failed:', e2.message, 'raw:', rawText.slice(0, 200));
+      return null;
+    }
   }
 }
 
@@ -234,21 +239,32 @@ isTable: true רק לטבלאות עם שורות חוזרות.
   console.log('Prompt length:', prompt.length, 'chars');
 
   try {
-    const response = await callGemini(apiKey, prompt, 4096);
+    // Retry once if Gemini returns 0 appendices but text clearly has them
+    let appendices = [];
+    const MAX_IDENTIFY_ATTEMPTS = 2;
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Gemini error:', response.status, errText.slice(0, 200));
-      return geminiErrorResponse(headers, response, errText);
+    for (let attempt = 0; attempt < MAX_IDENTIFY_ATTEMPTS; attempt++) {
+      const response = await callGemini(apiKey, prompt, 4096);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error('Gemini error:', response.status, errText.slice(0, 200));
+        return geminiErrorResponse(headers, response, errText);
+      }
+
+      const data = await response.json();
+      const result = parseGeminiJson(response, data);
+      if (!result) {
+        return { statusCode: 502, headers, body: JSON.stringify({ error: 'Invalid AI response' }) };
+      }
+
+      appendices = Array.isArray(result.appendices) ? result.appendices : [];
+
+      if (appendices.length > 0 || titleCount === 0) break;
+      // Gemini returned empty but we know there are title pages — retry
+      console.log('Identify retry: got 0 appendices but', titleCount, 'title pages exist, attempt', attempt + 1);
     }
 
-    const data = await response.json();
-    const result = parseGeminiJson(response, data);
-    if (!result) {
-      return { statusCode: 502, headers, body: JSON.stringify({ error: 'Invalid AI response' }) };
-    }
-
-    const appendices = Array.isArray(result.appendices) ? result.appendices : [];
     appendices.forEach((app, i) => {
       if (!app.id) app.id = 'app_' + i;
       if (!app.type) app.type = 'custom';
