@@ -241,10 +241,11 @@ ${filteredText}
 ${filteredText}
 
 החזר JSON בלבד:
-{"appendices":[{"id":"app_0","type":"declarations","title":"שם מדויק","hebrewLabel":"א'1","description":"תיאור קצר","isTable":false}]}
+{"appendices":[{"id":"app_0","type":"declarations","title":"שם מדויק","hebrewLabel":"א'1","description":"תיאור קצר","isTable":false,"pages":[31,32]}]}
 
 type: experience|team|declarations|financial|methodology|pricing|references|confidentiality|conflict|insurance|custom
 isTable: true רק לטבלאות עם שורות חוזרות.
+pages: מספרי העמודים (לפי סימוני "עמוד N") שבהם מופיע הנספח. חובה.
 אל תמציא נספחים. החזר רק מה שמופיע במסמך.`;
 
   console.log('Prompt length:', prompt.length, 'chars');
@@ -278,6 +279,7 @@ isTable: true רק לטבלאות עם שורות חוזרות.
       if (!Array.isArray(app.fields)) app.fields = [];
       if (!Array.isArray(app.rows)) app.rows = [];
       if (typeof app.isTable !== 'boolean') app.isTable = false;
+      if (!Array.isArray(app.pages)) app.pages = [];
     });
 
     console.log('Extracted', appendices.length, 'appendices');

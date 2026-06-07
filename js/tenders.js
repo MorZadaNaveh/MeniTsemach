@@ -344,7 +344,31 @@ function renderTmDynApp(idx){
   currentAIResult.tenderNumber = t.number;
   currentAIResult.appendices = tmDynApps;
   currentAnalysisIdx = tmId;
+
+  const mode = (typeof _pdfViewerMode !== 'undefined' && _pdfViewerMode[idx]) || 'pdf';
+  const hasPages = Array.isArray(app.pages) && app.pages.length > 0;
+
+  if(mode === 'pdf' && hasPages){
+    const toggleHtml = `<div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="btn bo sm" onclick="_pdfViewerMode[${idx}]='form';renderTmDynApp(${idx})">טופס</button>
+      <button class="btn bp sm" onclick="_pdfViewerMode[${idx}]='form';renderTmDynApp(${idx})">PDF מקור</button>
+    </div>`;
+    ac.innerHTML = toggleHtml + '<div id="pdfViewerContainer"></div>';
+    if(typeof renderPdfIframeViewer === 'function') renderPdfIframeViewer(idx);
+    if(savedResult) currentAIResult = savedResult;
+    return;
+  }
+
   ac.innerHTML = buildDynAppHtml(app, idx, tmId);
+
+  if(hasPages){
+    const toggleHtml = `<div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="btn bp sm" onclick="if(typeof _pdfViewerMode==='undefined')window._pdfViewerMode={};_pdfViewerMode[${idx}]='form';renderTmDynApp(${idx})">טופס</button>
+      <button class="btn bo sm" onclick="if(typeof _pdfViewerMode==='undefined')window._pdfViewerMode={};_pdfViewerMode[${idx}]='pdf';renderTmDynApp(${idx})">PDF מקור</button>
+    </div>`;
+    ac.insertAdjacentHTML('afterbegin', toggleHtml);
+  }
+
   // Restore
   if(savedResult) currentAIResult = savedResult;
 
@@ -379,12 +403,7 @@ function buildOverviewTab(t){
       <div class="ai"><div class="ail">זוכים</div><div class="aiv">${t.winners}</div></div>
       <div class="ai"><div class="ail">ביטוחים</div><div class="aiv">${t.insurance}</div></div>
     </div>
-    <div class="stl">ערבויות</div>
-    <div class="agrid" style="margin-top:0">
-      <div class="ai"><div class="ail">ערבות מכרז</div><div class="aiv">${t.tenderBond}</div></div>
-      <div class="ai"><div class="ail">ערבות ביצוע</div><div class="aiv">${t.performanceBond}</div></div>
-      <div class="ai" style="grid-column:span 2"><div class="ail">ערבות אחריות</div><div class="aiv">${t.liabilityBond}</div></div>
-    </div>
+    ${typeof buildGuaranteesSectionHtml === 'function' ? buildGuaranteesSectionHtml(t) : `<div class="stl">ערבויות</div><div class="alert ab2" style="font-size:12px">אין ערבויות למכרז זה</div>`}
     <div class="stl">היקף העבודה</div>
     <div style="background:var(--bg2);border:1px solid var(--s5);border-radius:8px;padding:9px 12px;font-size:13px;line-height:1.6">${t.scope}</div>
     <div class="stl">דגשים חשובים</div>
@@ -400,32 +419,11 @@ function buildOverviewTab(t){
 }
 
 function buildScoringTab(t){
-  const quality = (t.qualityScoring||[]).map(q=>{
-    const wNum = parseInt(String(q.w||'').replace('%',''), 10);
-    const m = Number.isFinite(+q.m) && +q.m > 0 ? +q.m : (Number.isFinite(wNum) ? wNum : 0);
-    const estimated = m > 0 ? Math.round(m * 0.88) : 0;
-    return { ...q, m, estimated, wLabel: q.w || (m ? `${m}%` : '') };
-  });
-  const sc = quality.reduce((a,q)=>a+q.estimated,0);
+  const scoringHtml = typeof buildScoringTablesHtml === 'function'
+    ? buildScoringTablesHtml(t)
+    : '<div class="alert ab2" style="font-size:14px">לא זוהו טבלאות ניקוד במסמך</div>';
   return `
-    <div class="stl">תנאי סף — בינארי</div>
-    ${t.thresholds.map(th=>`<div class="thresh-ok"><span style="color:var(--grn);flex-shrink:0">✅</span><span style="font-size:14px;line-height:1.55">${th}</span></div>`).join('')}
-    <div class="stl" style="margin-top:14px">ניקוד איכותי (סעיפים)</div>
-    ${quality.length ? quality.map((q,i)=>`
-      <div style="display:grid;grid-template-columns:1fr 104px;gap:12px;border:1px solid var(--s5);border-radius:10px;padding:12px 13px;margin-bottom:10px;background:var(--w)">
-        <div>
-          <div style="font-weight:700;font-size:14px;line-height:1.45;color:var(--navy);margin-bottom:6px">${i+1}. ${q.l}</div>
-          <div style="font-size:13px;line-height:1.65;color:var(--s2)">${q.detail || 'אין פירוט נוסף'}</div>
-        </div>
-        <div style="display:flex;align-items:center;justify-content:center">
-          <div style="text-align:center;background:var(--grn-light);border:1px solid var(--grn-border);border-radius:9px;padding:9px 8px;min-width:86px">
-            <div style="font-size:11px;color:var(--s3);margin-bottom:2px">ניקוד</div>
-            <div style="font-family:'IBM Plex Mono',monospace;font-weight:800;font-size:15px;line-height:1.2;color:var(--grn)">${formatScoreDisplay(q)}</div>
-          </div>
-        </div>
-      </div>
-    `).join('') : '<div class="alert ab2" style="font-size:13px">לא זוהו מדדי ניקוד במכרז</div>'}
-    <div class="alert ag2" style="margin-top:8px">סה"כ ניקוד איכותי משוער: <strong>${sc}</strong></div>
+    ${scoringHtml}
     <div style="display:flex;justify-content:flex-end;margin-top:9px">
       <button class="btn bo sm" onclick="printDocument('scoring',${t.id})"><svg width="12" height="12"><use href="#ic-print"/></svg> הדפס</button>
     </div>`;

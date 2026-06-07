@@ -46,13 +46,19 @@ function printDocument(docType, tidOrNull, extraArg){
   let html='';
 
   if(docType==='overview'&&t){
+    const guaranteeRows = typeof normalizeGuarantees === 'function' ? normalizeGuarantees(t) : [];
+    const guaranteesPrint = guaranteeRows.length
+      ? `<h2>ערבויות</h2>
+        <table><thead><tr><th>סוג</th><th>פירוט</th></tr></thead><tbody>
+          ${guaranteeRows.map(g=>`<tr><td style="font-weight:600">${g.label}</td><td>${g.detail}</td></tr>`).join('')}
+        </tbody></table>`
+      : `<h2>ערבויות</h2><div class="ok-box">אין ערבויות למכרז זה</div>`;
     html=head+hdr(`סקירת מכרז: ${t.name}`,`${t.org} | ${t.number}`)+
     `<div class="grid2">
       <div class="ai-box"><div class="ai-lbl">מועד הגשה</div><div class="ai-val" style="color:#c0392b;font-weight:700">${t.submitDeadline}</div></div>
       <div class="ai-box"><div class="ai-lbl">היקף</div><div class="ai-val">${t.value}</div></div>
-      <div class="ai-box"><div class="ai-lbl">ערבות מכרז</div><div class="ai-val">${t.tenderBond}</div></div>
-      <div class="ai-box"><div class="ai-lbl">ערבות ביצוע</div><div class="ai-val">${t.performanceBond}</div></div>
     </div>
+    ${guaranteesPrint}
     <h2>תנאי סף</h2>
     ${(t.thresholds||[]).map(th=>`<div class="ok-box">✅ ${th}</div>`).join('')}
     <h2>דגשים</h2>
@@ -60,14 +66,11 @@ function printDocument(docType, tidOrNull, extraArg){
     ${(t.flags||[]).length?`<h2>⚠ אזהרות</h2>${(t.flags||[]).map(f=>`<div class="warn-box">⚠️ ${f}</div>`).join('')}`:''}
     `+ftr+foot;
   } else if(docType==='scoring'&&t){
-    const sc=(t.qualityScoring||[]).reduce((a,q)=>a+Math.round((q.m||0)*0.88),0);
+    const scoringBody = typeof buildScoringTablesHtml === 'function'
+      ? buildScoringTablesHtml(t).replace(/class="stl"/g, 'style="font-size:14pt;font-weight:700;margin:12pt 0 6pt"').replace(/font-size:14px/g, 'font-size:14pt')
+      : '<p>לא זוהו טבלאות ניקוד</p>';
     html=head+hdr(`טבלת ניקוד: ${t.name}`,t.number)+
-    `<h2>תנאי סף</h2>${(t.thresholds||[]).map(th=>`<div class="ok-box">✅ ${th}</div>`).join('')}
-    <h2>ניקוד איכותי</h2>
-    <table><thead><tr><th>קריטריון</th><th>משקל</th><th>מקסימום</th><th>ניקוד משוער</th></tr></thead>
-    <tbody>${(t.qualityScoring||[]).map(q=>{const e=Math.round((q.m||0)*0.88);return`<tr><td style="font-weight:600">${q.l}</td><td>${q.w}%</td><td class="mono" style="font-weight:700">${q.m}</td><td class="mono" style="font-weight:700;color:#2d9b6f">${e}</td></tr>`;}).join('')}
-    <tr style="background:#e8f5f0;font-weight:700"><td>סה"כ</td><td>100%</td><td class="mono">100</td><td class="mono" style="color:#1a5c4a">${sc}</td></tr>
-    </tbody></table>`+ftr+foot;
+    `<h2>ניקוד מהמכרז</h2>${scoringBody}`+ftr+foot;
   } else if(docType==='fullPackage'&&t){
     html=head+hdr(`חבילת הגשה מלאה: ${t.name}`,`${t.org} | ${t.number} | ${today}`)+
     `<h2>פרטי המכרז</h2>
@@ -80,11 +83,19 @@ function printDocument(docType, tidOrNull, extraArg){
     <div class="sign-row"><div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">${BIDDER.signatory}</div></div><div class="sign-box"><div class="sign-line"></div><div class="sign-lbl">תאריך וחותמת</div></div></div>`+ftr+foot;
   } else if(docType==='analysis'){
     const r=currentAIResult||{};
+    const guaranteeRows = typeof normalizeGuarantees === 'function' ? normalizeGuarantees(r) : [];
+    const guaranteesPrint = guaranteeRows.length
+      ? `<h2>ערבויות</h2>
+        <table><thead><tr><th>סוג</th><th>פירוט</th></tr></thead><tbody>
+          ${guaranteeRows.map(g=>`<tr><td style="font-weight:600">${g.label}</td><td>${g.detail}</td></tr>`).join('')}
+        </tbody></table>`
+      : `<h2>ערבויות</h2><div class="ok-box">אין ערבויות למכרז זה</div>`;
     html=head+hdr(`דוח ניתוח AI: ${r.tenderName||'מכרז'}`,r.orgName||'')+
     `<div class="grid2">
       <div class="ai-box"><div class="ai-lbl">מועד הגשה</div><div class="ai-val" style="color:#c0392b;font-weight:700">${r.submitDeadline||'TBD'}</div></div>
       <div class="ai-box"><div class="ai-lbl">היקף</div><div class="ai-val">${r.value||'TBD'}</div></div>
     </div>
+    ${guaranteesPrint}
     <h2>תנאי סף</h2>
     ${(r.thresholds||['לא זוהו תנאי סף ספציפיים']).map(th=>`<div class="ok-box">✅ ${th}</div>`).join('')}
     ${(r.flags||[]).length?`<h2>⚠ אזהרות</h2>${(r.flags||[]).map(f=>`<div class="warn-box">⚠️ ${f}</div>`).join('')}`:''}
