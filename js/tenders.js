@@ -345,29 +345,7 @@ function renderTmDynApp(idx){
   currentAIResult.appendices = tmDynApps;
   currentAnalysisIdx = tmId;
 
-  const mode = (typeof _pdfViewerMode !== 'undefined' && _pdfViewerMode[idx]) || 'pdf';
-  const hasPages = Array.isArray(app.pages) && app.pages.length > 0;
-
-  if(mode === 'pdf' && hasPages){
-    const toggleHtml = `<div style="display:flex;gap:6px;margin-bottom:10px">
-      <button class="btn bo sm" onclick="_pdfViewerMode[${idx}]='form';renderTmDynApp(${idx})">טופס</button>
-      <button class="btn bp sm" onclick="_pdfViewerMode[${idx}]='form';renderTmDynApp(${idx})">PDF מקור</button>
-    </div>`;
-    ac.innerHTML = toggleHtml + '<div id="pdfViewerContainer"></div>';
-    if(typeof renderPdfIframeViewer === 'function') renderPdfIframeViewer(idx);
-    if(savedResult) currentAIResult = savedResult;
-    return;
-  }
-
   ac.innerHTML = buildDynAppHtml(app, idx, tmId);
-
-  if(hasPages){
-    const toggleHtml = `<div style="display:flex;gap:6px;margin-bottom:10px">
-      <button class="btn bp sm" onclick="if(typeof _pdfViewerMode==='undefined')window._pdfViewerMode={};_pdfViewerMode[${idx}]='form';renderTmDynApp(${idx})">טופס</button>
-      <button class="btn bo sm" onclick="if(typeof _pdfViewerMode==='undefined')window._pdfViewerMode={};_pdfViewerMode[${idx}]='pdf';renderTmDynApp(${idx})">PDF מקור</button>
-    </div>`;
-    ac.insertAdjacentHTML('afterbegin', toggleHtml);
-  }
 
   // Restore
   if(savedResult) currentAIResult = savedResult;
